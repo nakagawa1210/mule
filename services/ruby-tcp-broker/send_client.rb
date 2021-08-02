@@ -1,10 +1,10 @@
 require "socket"
 
 class MakeSendArray
-  def initialize(count, datasize)
+  def initialize(count, data_size)
     @senddata = []
     (0 ... count).each do |num|
-      message = makepaket(datasize)
+      message = makepaket(data_size)
 
       length = message.length
       command = 1
@@ -39,10 +39,30 @@ class MakeSendArray
 end
 
 def main()
-  count = ARGV.size > 0 ?  ARGV[0].to_i : 10
-  datasize = ARGV.size > 1 ?  ARGV[1].to_i : 1
-  window_size = ARGV.size > 2 ?  ARGV[2].to_i : 1
-
+  if ARGV.size > 0
+    count = ARGV[0].to_i
+  else
+    file = File.basename(__FILE__)
+    STDERR.printf("%s argument error count\n", file)
+    exit
+  end
+  
+  if ARGV.size > 1
+    data_size = ARGV[1].to_i
+  else
+    file = File.basename(__FILE__)
+    STDERR.printf("%s argument error data_size\n", file)
+    exit
+  end
+  
+  if ARGV.size > 2
+    window_size = ARGV[2].to_i
+  else
+    file = File.basename(__FILE__)
+    STDERR.printf("%s argument error window_size\n", file)
+    exit
+  end
+  
   if (count < window_size)
     puts"count < window_size"
     exit
@@ -54,16 +74,18 @@ def main()
 
   loop_count = count / window_size
 
-  senddata = MakeSendArray.new(window_size,datasize)
+  senddata = MakeSendArray.new(window_size,data_size)
 
   windata = "1/" + window_size.to_s + "\n"
-  
+
+  s.write(windata)
+  s.gets
+
   loop_count.times do
-    s.write(windata)
-    s.gets
     senddata.each{|data| s.write(data)}
     s.gets
   end
+  
   s.write("9\n")
   s.close
 end
