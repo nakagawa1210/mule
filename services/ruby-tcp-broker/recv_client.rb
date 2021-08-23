@@ -1,7 +1,30 @@
 require 'socket'
 
 def main
-  count = ARGV.size > 0 ?  ARGV[0].to_i : 10
+  if ARGV.size > 0
+    count = ARGV[0].to_i
+  else
+    file = File.basename(__FILE__)
+    STDERR.printf("%s argument error count\n", file)
+    exit
+  end
+  
+  if ARGV.size > 1
+    data_size = ARGV[1].to_i
+  else
+    file = File.basename(__FILE__)
+    STDERR.printf("%s argument error datasize\n", file)
+    exit
+  end
+  
+  if ARGV.size > 2
+    window_size = ARGV[2].to_i
+  else
+    file = File.basename(__FILE__)
+    STDERR.printf("%s argument error window_size\n", file)
+    exit
+  end
+  
   port = 50052
   s = TCPSocket.open("localhost", port)
   s.setsockopt(Socket::IPPROTO_TCP,Socket::TCP_NODELAY,true)
@@ -15,24 +38,22 @@ def main
 
   recvdata = []
 
-  s.write(iddata + "\n")
+  loop_count = count / window_size
+
+  loop_count.times do
+    s.write(iddata + "\n")
   
-  loop do
-    s.gets
-    
-    if $_[0] == '8'
-      s.write(iddata + "\n")
+    window_size.times do
       s.gets
+      
+      time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      data = $_.chomp
+      data << ',' << time.to_s
+    
+      recvdata.push data
     end
-    time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    data = $_.chomp
-    data << ',' << time.to_s
-
-    recvdata.push data
-
-    break if recvdata.length == count
   end
-  s.gets
+
   s.write("5\n")
   s.close
   

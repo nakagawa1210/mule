@@ -22,7 +22,8 @@ class MsgServer < TCPServer
     when 1 then
       s.write("\n")
       send_msg(count, window_size, s)
-    when 2 then recv_msg(s)
+    when 2 then
+      recv_msg(count, window_size, s)
     when 9 then true
     when 5 then 5
     else false
@@ -42,33 +43,36 @@ class MsgServer < TCPServer
     end
   end
   
-  def recv_msg(s)
+  def recv_msg(count, win_size, s)
+    msg_count = 0
     loop do
-      spin_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      win_size.times do
+        spin_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       
-      while $array.length == 0
-        sleep(0.0001)
-      end
+        while $array.length == 0
+          sleep(0.0001)
+        end
       
-      lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      $recv_lock += 1 if $array_mu.locked?
-      $array_mu.lock
-      lock_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      begin      
-        recvdata = $array.shift
-        shift_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      ensure
-        $array_mu.unlock
-      end
-      $recv_lock_time.push [spin_start, lock_start, lock_end, shift_end]
-      
-      time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      data = recvdata << ',' << time.to_s << "\n"
+        lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        $recv_lock += 1 if $array_mu.locked?
+        $array_mu.lock
+        lock_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        begin      
+          recvdata = $array.shift
+          shift_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        ensure
+          $array_mu.unlock
+        end
+        $recv_lock_time.push [spin_start, lock_start, lock_end, shift_end]
         
-      s.write(data)
-      break if $array.length == 0
+        time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        data = recvdata << ',' << time.to_s << "\n"
+        s.write(data)
+        msg_count += 1
+      end
+      break if msg_count == count
+      s.gets
     end
-    s.write("8\n")
     return false
   end 
   
@@ -78,7 +82,7 @@ class MsgServer < TCPServer
       winsize.times do
         s.gets
         time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        p msg_count += 1
+        msg_count += 1
         senddata = $_.chomp
         senddata << ',' << time.to_s
         lock_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
