@@ -10,14 +10,14 @@ cd "$(dirname "$0")"
 
 TIME=$(date "+%Y%m%d_%H%M")
 
-echo start $3$1_$2_$TIME.log $(date "+%M:%S")
-ruby server.rb > log/$3$1_$2_$TIME.lenlog &
+echo start $4$1_$2_$3_$TIME.log $(date "+%M:%S")
+ruby server.rb $1 $2 $3 > log/$4$1_$2_$3_$TIME.lenlog &
 SRVID=$!
 sleep 1
-ruby recv_client.rb $1 > log/$3$1_$2_$TIME.log &
+ruby recv_client.rb $1 $2 $3 > log/$4$1_$2_$3_$TIME.log &
 sleep 1
 RECVID=$!
-ruby send_client.rb $1 $2 $4 &
+ruby send_client.rb $1 $2 $3 &
 
 while(true)
 do
@@ -27,13 +27,13 @@ do
     sleep 1
 done
 
-echo end $3$1_$2_$TIME.log $(date "+%M:%S")
+echo end $4$1_$2_$3_$TIME.log $(date "+%M:%S")
 
 kill $SRVID
 
-ruby cal.rb log/$3$1_$2_$TIME.log $2
-ruby file_cat.rb log/$3$1_$2_$TIME.log log/$3$1_$2_$TIME.lenlog
+ruby ~/mule/evaluation/cal.rb log/$4$1_$2_$3_$TIME.log $2
+ruby ~/mule/evaluation/file_cat.rb log/$4$1_$2_$3_$TIME.log log/$4$1_$2_$3_$TIME.lenlog
 
-echo $3$1_$2_$TIME.log >> log/latest_file.log
-echo $3$1_$2_$TIME.mulog >> log/latest_file.mulog
-echo $3$1_$2_$TIME.lenlog >> log/latest_file.latelog
+echo $4$1_$2_$3_$TIME.log >> log/latest_file.log
+echo $4$1_$2_$3_$TIME.mulog >> log/latest_file.mulog
+echo $4$1_$2_$3_$TIME.lenlog >> log/latest_file.latelog
