@@ -1,0 +1,123 @@
+#+TITLE: メッセージブローカの引数と使用方法
+#+AUTHOR: 中川 雄介
+#+EMAIL: nakagawa2020@s.okayama-u.ac.jp
+#+DATE: 2021-08-03
+#+OPTIONS: H:3 num:1 toc:nil
+#+OPTIONS: ^:nil @:t \n:nil ::t |:t f:t TeX:t
+#+OPTIONS: skip:nil
+#+OPTIONS: author:t
+#+OPTIONS: email:nil
+#+OPTIONS: creator:nil
+#+OPTIONS: timestamp:nil
+#+OPTIONS: timestamps:nil
+#+OPTIONS: d:nil
+#+OPTIONS: tags:t
+#+TEXT:
+#+DESCRIPTION:
+#+KEYWORDS:
+#+LANGUAGE: ja
+#+LATEX_CLASS: jsarticle
+#+LATEX_CLASS_OPTIONS: [a4j,dvipdfmx]
+#+LATEX_HEADER: \usepackage{plain-article}
+#+LATEX_HEADER: \usepackage{pxjahyper}
+# #+LATEX_HEADER: \renewcommand\maketitle{}
+# #+LATEX_HEADER: \pagestyle{empty}
+# #+LaTeX: \thispagestyle{empty}
+
+* はじめに
+  中川が作成したメッセージブローカの引数と使用方法について，以下に述べる．
+
+* 引数の詳細
+  以下に各プログラムの引数の詳細について述べる．
+
+** send_client
+*** 書式
+    : send_client [COUNT] [DATA_SIZE] [WINDOW_SIZE]
+*** 説明
+    *COUNT* でメッセージ送信回数を指定し，
+    *DATA_SIZE* で一つのメッセージで送るデータのサイズを指定する．
+    *WINDOW_SIZE* で指定された回数メッセージを受け取る毎に応答メッセージを送信する．
+*** 使用例
+    1) データサイズ１KB，WS100でメッセージを 1000個送信．
+       : send_client 1000 1 100
+
+** recv_client
+*** 書式
+    : m-receiver [-b BROKER:PORT] [-c MSGS] [-d LEVEL] [-l LOG-FILE] [-p PID-FILE] [-u MYID]
+*** 説明
+    メッセージを受信して記録．
+*** オプション
+    以下，m-sender との相異点:
+    + =-c MSGS= :: MSGS個のメッセージを受信したら終了 (default: 1000)．
+    + =-u MYID= :: 自身のIDを表す0以上の整数 (default: 0)．他のセンダやレシーバと異なるように指定．
+*** 使用例
+    1) localhost:8888 で動作中のブローカに接続し，メッセージを 1000個受信したら終了．
+       : m-receiver -b localhost:8888 -c 1000
+    2) localhost:3000 で動作中のブローカに接続し，メッセージ受信し続ける．自身の ID は 9999 とする．
+       : m-receiver -u 9999
+
+** server
+*** 書式
+    : m-broker [-b BROKER:PORT] [-c MSGS] [-d LEVEL] [-l LOG-FILE] [-p PID-FILE] [-u MYID]
+*** 説明
+    ブローカーを起動して *PORT* で待ち受ける．
+*** オプション
+    以下，m-sender との相異点:
+    + =-b PORT= :: bind するポート BROKER には localhost など，自身を表すアドレスを指定する．(default: 5000)．
+    + =-c MSGS= :: 無視します
+    + =-u MYID= :: 自身のIDを表す0以上の整数 (default: 50000)．他のセンダやレシーバと異なるように指定する．
+      ブローカの MYID に対してメッセージを送信することでセンダのテストが可能．
+*** 使用例
+    1) 8888 ポートででブローカを起動する．メッセージを 1000個処理したら終了．
+       : m-broker -b 8888 -c 1000
+    2) デフォルトポートででブローカを起動し，メッセージを処理し続ける．自身の ID は 80000 とする．
+       : m-broker -u 80000
+
+
+* メッセージ (パケット)
+** フォーマット
+  本実験システムでは，以下のような固定長のメッセージフォーマットを採用している．
+  #+begin_src c
+    #define MSG_PAYLOAD_LEN 1024
+    #define MSG_HEADER_LEN  (sizeof(struct message_header))
+    #define MSG_TOTAL_LEN   (MSG_HEADER_LEN + MSG_PAYLOAD_LEN)
+
+    struct message_header {
+      uint32_t tot_len;  // total length including payload
+      uint32_t msg_type; // MSG_SEND_REQ ..
+      uint32_t saddr;    // source address
+      uint32_t daddr;    // destination address
+      uint32_t id;       // message Id
+    };
+
+    struct message {
+      struct message_header hdr;
+      char payload[MSG_PAYLOAD_LEN];
+    };
+  #+end_src
+  =MSG_PAYLOAD_LEN= (固定長) がメッセージの長さを表している．メッセージの種類 (ACK であっても) によって変化しない．
+
+** メッセージタイプ
+   現状，以下のように定義されている．
+   #+begin_src c
+     #define MSG_SEND_REQ  1 // sender -> broker (+payload)
+     #define MSG_SEND_ACK  2 // broker -> sender
+     #define MSG_RECV_REQ  3 // receiver -> broker
+     #define MSG_RECV_ACK  4 // broker -> receiver (+payload)
+     #define MSG_FREE_REQ  5 // receiver -> broker
+     #define MSG_FREE_ACK  6 // broker -> receiver
+     #define MSG_PUSH_REQ  7 // broker -> receiver (+payload)
+     #define MSG_PUSH_ACK  8 // receiver -> broker
+     #define MSG_HELO_REQ  9 // receiver -> broker
+     #define MSG_HELO_ACK 10 // broker -> receiver
+   #+end_src
+
+* 利用例
+  添付の Makefile にビルドと簡単なテスト方法を記述した．
+  gcc, perf コマンドが必要．
+
+  #+begin_src shell-script
+    make # コンパイル
+    make allow-perf # ユーザに perf の権限を与える
+    make test # sender/broker/receive の疎通テスト
+  #+end_src

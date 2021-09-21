@@ -126,25 +126,27 @@ ssize_t readn(int fd, void *buf, size_t count)
   }
   return count;
 }
-int send_msg(int length, int winsize,int fd)
+int send_msg(int count, int length, int winsize,int fd)
 { 
   char sendbuf[MAX_BUF_SIZE];
   unsigned int tsc_l, tsc_u;
   unsigned long int log_tsc;
-
-  for(int i = 0; i< winsize ;i++){
-    readn(fd, &sendbuf, length + 20);
-    rdtsc_64(tsc_l, tsc_u);
-    log_tsc = (unsigned long int)tsc_u<<32 | tsc_l;
-
-    memcpy(&array[datanum][0], sendbuf,length + 20);
-    memcpy(&array[datanum][length + 20] ,&log_tsc ,sizeof(log_tsc));
-    datanum++;	     
-  }
-
   char sendack[4] = "ack";
-  writen(fd, sendack, sizeof(sendack));
-  return 0;
+  int loop_count = count / winsize;
+
+  for(int x = 0;x < loop_count;x++){
+    for(int i = 0; i< winsize ;i++){
+      readn(fd, &sendbuf, length + 20);
+      rdtsc_64(tsc_l, tsc_u);
+      log_tsc = (unsigned long int)tsc_u<<32 | tsc_l;
+
+      memcpy(&array[datanum][0], sendbuf,length + 20);
+      memcpy(&array[datanum][length + 20] ,&log_tsc ,sizeof(log_tsc));
+      datanum++;	     
+    }
+    writen(fd, sendack, sizeof(sendack));
+  }
+  return 1;
 }
 
 int recv_msg(int fd, char *databuf)
@@ -187,6 +189,7 @@ int recv_msg(int fd, char *databuf)
 
 int analyze(char *data, int fd){
   //int length = *((int*)&data[0]);
+  int count = 100000;
   int length = 0;
   int command = 0;
   int winsize = 0;
@@ -203,7 +206,7 @@ int analyze(char *data, int fd){
   switch (command){
   case 1 :
     writen(fd, ack, 4);
-    res = send_msg(length * 1024,winsize,fd);
+    res = send_msg(count, length * 1024, winsize, fd);
     break;
   case 2 :
     ackset(rack);
@@ -234,9 +237,13 @@ void *loop (void* pArg){
 int main(int argc, char *argv[])
 {
   pthread_t handle;
-  listener = setup_socket(atoi(argv[1]));
+  listener = setup_socket(atoi(argv[4]));
   struct sockaddr_in client_addr;
   socklen_t client_addr_len = sizeof client_addr;
+  
+  int count = atoi(argv[1]);
+  int len = atoi(argv[2]);
+  int winsize = atoi(argv[3]);
   
   int i=0;
   for(i;i<2;i++){

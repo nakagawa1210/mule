@@ -68,11 +68,13 @@ ssize_t readn(int fd, void *buf, size_t count)
 
 void send_msg (char *host, int port_no,int count, int len, int winsize)
 {
+  int loop_count = count / winsize;
+  
   int msglen = len*1024;
-  char buf[MEM_SIZE];
+  char buf[loop_count][msglen + 20];
   char iddata[16];
   int fd = socket(AF_INET, SOCK_STREAM, 0);
-  buf[msglen + 20] = '\0';
+  //buf[msglen + 20] = '\0';
 
   if (fd < 0) {
     perror("socket\n");
@@ -91,19 +93,14 @@ void send_msg (char *host, int port_no,int count, int len, int winsize)
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port_no);
   memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
-
-  //  char input = getchar();
-  char input = 'a';
-
-  for (int a = 0; a < msglen + 20; a++) {
-	buf[a] = input;
-  }
   
   int length = len;
   int command = 1;
   int dest = 3;
   int endnum = 9;
   char enddata[16];
+  char ack[4];
+  char dummy_data = 'a';
 
   memcpy(&iddata[0],&length,sizeof(length));
   memcpy(&iddata[4],&command,sizeof(command));
@@ -114,19 +111,25 @@ void send_msg (char *host, int port_no,int count, int len, int winsize)
   memcpy(&enddata[4],&endnum,sizeof(endnum));
   memcpy(&enddata[8],&winsize,sizeof(winsize));
   memcpy(&enddata[12],&dest,sizeof(dest));
-  
-  memcpy(&buf[0],&len,sizeof(len));
-  memcpy(&buf[4],&command,sizeof(command));
-  memcpy(&buf[8],&winsize,sizeof(winsize));
+
+  for (int i = 0;i < loop_count;i++) {
+    memcpy(&buf[i][0],&len,sizeof(len));
+    memcpy(&buf[i][4],&command,sizeof(command));
+    memcpy(&buf[i][8],&winsize,sizeof(winsize));
+    
+    for (int j = 12; j < msglen + 12; j++) {
+      buf[i][j] = dummy_data;
+    }   
+  }
   
   while (1) {
-	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-	  printf("sleep\n");
-	  sleep(1);
-	  continue;
-	} else {
-	  break;
-	}
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+      printf("sleep\n");
+      sleep(1);
+      continue;
+    } else {
+      break;
+    }
   }
   
   int on=1;
@@ -135,23 +138,22 @@ void send_msg (char *host, int port_no,int count, int len, int winsize)
 
   unsigned int tsc_l, tsc_u; //uint32_t
   unsigned long int log_tsc;
-
-  for (int n = 0; n < (count / winsize); n++){
-    writen(fd, iddata, sizeof(iddata));
-    char ack[4];
-    readn(fd, ack, 4);
-   
+  
+  writen(fd, iddata, sizeof(iddata));
+  readn(fd, ack, 4);
+  
+  for (int x = 0; x < loop_count; x++) {
     for (int i = 0; i < winsize; i++) {
       rdtsc_64(tsc_l, tsc_u);
       log_tsc = (unsigned long int)tsc_u<<32 | tsc_l;
-      memcpy(&buf[msglen + 12], &log_tsc, sizeof(log_tsc));
+      memcpy(&buf[i][msglen + 12], &log_tsc, sizeof(log_tsc));
       
-      writen(fd, buf, msglen + 20);
+      writen(fd, buf[i], msglen + 20);
     } 
     readn(fd, ack, 4);
   }
-  writen(fd, enddata, sizeof(enddata));
-
+  //writen(fd, enddata, sizeof(enddata));
+  
   if (close(fd) == -1) {
     printf("%d\n", errno);
   }
