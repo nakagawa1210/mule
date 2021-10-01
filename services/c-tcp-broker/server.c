@@ -149,41 +149,30 @@ int send_msg(int count, int length, int winsize,int fd)
   return 1;
 }
 
-int recv_msg(int fd, char *databuf)
+int recv_msg(int count, int length, int winsize,int fd)
 {
+  char sendbuf[MAX_BUF_SIZE];
   unsigned int tsc_l, tsc_u;
   unsigned long int log_tsc;
   char recvack[4];
-  int size;
-  int winsize;
-  int flag = 0;
+  int loop_count = count / winsize;
   int len = 0;
-  
-  memcpy(&size,&databuf[0],4);
-  memcpy(&winsize,&databuf[4],4);
-  size = size * 1024;
-  while (1){
-    if(flag)break;
+
+  for(int x = 0;x < loop_count;x++){
     for(int i = 0; i< winsize ;i++){
-      len = datanum - recvnum;
-      while(len <= 0){
-	//usleep(100000);//0.1s
-	//sleep(1);
+      do{
 	len = datanum - recvnum;
-      }
-      fprintf(stdout,"%d,%d\n",recvnum,len);
-      fflush(stdout);
+      }while(len <= 0);
+
       rdtsc_64(tsc_l, tsc_u);
       log_tsc = (unsigned long int)tsc_u<<32 | tsc_l;
-      memcpy(&array[recvnum][size + 28],&log_tsc,sizeof(unsigned long int));
-      writen(fd, &array[recvnum], size + 36);
-      recvnum++;
+      memcpy(&array[recvnum][length + 28],&log_tsc,sizeof(unsigned long int));
+
+      writen(fd, &array[recvnum], length + 36);
+      recvnum++;	     
     }
- 
     readn(fd, recvack, sizeof(recvack));
-    memcpy(&flag,&recvack[0],4);
   }
-  printf("end\n");
   return 1;
 }
 
@@ -211,7 +200,7 @@ int analyze(char *data, int fd){
   case 2 :
     ackset(rack);
     writen(fd, rack, 8);
-    res = recv_msg(fd, rack);
+    res = recv_msg(count, length * 1024, winsize, fd);
     break;
   case 9 :
     res = 1;
@@ -222,6 +211,7 @@ int analyze(char *data, int fd){
   }
   return res;
 }
+
 void *loop (void* pArg){
   int *fdp = (int*) pArg;
   char buf[16];
@@ -236,14 +226,43 @@ void *loop (void* pArg){
 
 int main(int argc, char *argv[])
 {
+  int count = 1;
+  int data_size = 1;
+  int win_size = 1;
+  int port_num = 8000;
+
+  if(argc > 1){
+    count = atoi(argv[1]);
+  }else{
+    printf("%s argument error count\n", __FILE__);
+    return 0;
+  }
+  
+  if(argc > 2){
+    data_size = atoi(argv[2]);
+  }else{
+    printf("%s argument error datasize\n", __FILE__);
+    return 0;
+  }
+
+  if(argc > 3){
+    win_size = atoi(argv[3]);
+  }else{
+    printf("%s argument error winsize\n", __FILE__);
+    return 0;
+  }
+  
+  if(argc > 4){
+    port_num = atoi(argv[4]);
+  }else{
+    printf("%s argument error portnum\n", __FILE__);
+    return 0;
+  }  
+  
   pthread_t handle;
-  listener = setup_socket(atoi(argv[4]));
+  listener = setup_socket(port_num);
   struct sockaddr_in client_addr;
   socklen_t client_addr_len = sizeof client_addr;
-  
-  int count = atoi(argv[1]);
-  int len = atoi(argv[2]);
-  int winsize = atoi(argv[3]);
   
   int i=0;
   for(i;i<2;i++){

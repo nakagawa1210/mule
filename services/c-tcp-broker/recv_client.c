@@ -75,12 +75,11 @@ ssize_t writen(int fd,const void *vptr, size_t n)
   return n;
 }
 
-void recv_msg(char *host, int port_no, int count)
+void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
 {
   char buf[MAX_BUF_SIZE];
   uint64_t recv_time[MAX_COUNT][4];
-  int datanum = 0;
-  int size = 0;
+  int data_num = 0;
   int fd = socket(AF_INET, SOCK_STREAM, 0);
   unsigned long int tsc; //uint64_t
 
@@ -101,26 +100,24 @@ void recv_msg(char *host, int port_no, int count)
   struct sockaddr_in addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
-  addr.sin_port = htons(port_no);
+  addr.sin_port = htons(port_num);
   memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
 
-  int len = 1;
   int command = 2;
-  int winsize = 3;
   int dest = 4;
   int endnum = 9;
   char iddata[16];
   char enddata[16];
 
-  memcpy(&iddata[0],&len,sizeof(len));
-  memcpy(&iddata[4],&command,sizeof(command));
-  memcpy(&iddata[8],&winsize,sizeof(winsize));
-  memcpy(&iddata[12],&dest,sizeof(dest));
+  memcpy(&iddata[0],&data_size, 4);
+  memcpy(&iddata[4],&command, 4);
+  memcpy(&iddata[8],&win_size, 4);
+  memcpy(&iddata[12],&dest, 4);
 
-  memcpy(&enddata[0],&len,sizeof(len));
-  memcpy(&enddata[4],&endnum,sizeof(endnum));
-  memcpy(&enddata[8],&winsize,sizeof(winsize));
-  memcpy(&enddata[12],&dest,sizeof(dest));
+  memcpy(&enddata[0],&data_size, 4);
+  memcpy(&enddata[4],&endnum, 4);
+  memcpy(&enddata[8],&win_size, 4);
+  memcpy(&enddata[12],&dest, 4);
   
   while (1) {     
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -132,8 +129,7 @@ void recv_msg(char *host, int port_no, int count)
   }
 
   int on=1;
-  int ret;
-	ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+  int ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
 
   unsigned long int log_tsc;
   char setdata[8];
@@ -147,24 +143,21 @@ void recv_msg(char *host, int port_no, int count)
   
   writen(fd, iddata, sizeof(iddata));
   readn(fd, setdata, 8);
-  memcpy(&size,&setdata[0],4);
-  memcpy(&winsize,&setdata[4],4);
-  size = size * 1024;
 
+  data_size = data_size * 1024;
   while(1) {
-    for (int i = 0;i < winsize; i++){
-      readn(fd, buf, size + 36);
+    for (int i = 0;i < win_size; i++){
+      readn(fd, buf, data_size + 36);
       log_tsc = gettsc();
-      memcpy(&recv_time[datanum][0], &buf[size +12], sizeof(unsigned long int));
-      memcpy(&recv_time[datanum][1], &buf[size +20], sizeof(unsigned long int));
-      memcpy(&recv_time[datanum][2], &buf[size +28], sizeof(unsigned long int));
-      memcpy(&recv_time[datanum][3], &log_tsc, sizeof(unsigned long int));
-      datanum++;
+      memcpy(&recv_time[data_num][0], &buf[data_size +12], sizeof(unsigned long int));
+      memcpy(&recv_time[data_num][1], &buf[data_size +20], sizeof(unsigned long int));
+      memcpy(&recv_time[data_num][2], &buf[data_size +28], sizeof(unsigned long int));
+      memcpy(&recv_time[data_num][3], &log_tsc, sizeof(unsigned long int));
+      data_num++;
     }
-    if(datanum == count)break;
+    if(data_num == count)break;
     writen(fd, ack, sizeof(ack));
   }
-  writen(fd, endack, sizeof(endack));
   //writen(fd, enddata, sizeof(enddata));
   
 //	rdtsc_64(tsc_l, tsc_u);
@@ -197,11 +190,44 @@ void recv_msg(char *host, int port_no, int count)
 
 int main(int argc, char *argv[])
 {
+  int count = 1;
+  int data_size = 1;
+  int win_size = 1;
+  int port_num = 8000;
+
+  if(argc > 1){
+    count = atoi(argv[1]);
+  }else{
+    printf("%s argument error count\n", __FILE__);
+    return 0;
+  }
+  
+  if(argc > 2){
+    data_size = atoi(argv[2]);
+  }else{
+    printf("%s argument error datasize\n", __FILE__);
+    return 0;
+  }
+
+  if(argc > 3){
+    win_size = atoi(argv[3]);
+  }else{
+    printf("%s argument error winsize\n", __FILE__);
+    return 0;
+  }
+  
+  if(argc > 4){
+    port_num = atoi(argv[4]);
+  }else{
+    printf("%s argument error portnum\n", __FILE__);
+    return 0;
+  }
+  
   if (argc < 2){
     printf("augument\n");
     return 0;
   }
-  recv_msg("localhost", atoi(argv[1]),atoi(argv[2]) );
+  recv_msg("localhost", count, data_size, win_size, port_num);
   
   return 0;
 }

@@ -66,12 +66,11 @@ ssize_t readn(int fd, void *buf, size_t count)
   return count;
 }
 
-void send_msg (char *host, int port_no,int count, int len, int winsize)
-{
+void send_msg (char *host, int count, int len,int winsize, int port_num){
   int loop_count = count / winsize;
   
   int msglen = len*1024;
-  char buf[loop_count][msglen + 20];
+  char buf[count][msglen + 20];
   char iddata[16];
   int fd = socket(AF_INET, SOCK_STREAM, 0);
   //buf[msglen + 20] = '\0';
@@ -91,7 +90,7 @@ void send_msg (char *host, int port_no,int count, int len, int winsize)
   struct sockaddr_in addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
-  addr.sin_port = htons(port_no);
+  addr.sin_port = htons(port_num);
   memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
   
   int length = len;
@@ -138,17 +137,20 @@ void send_msg (char *host, int port_no,int count, int len, int winsize)
 
   unsigned int tsc_l, tsc_u; //uint32_t
   unsigned long int log_tsc;
+
+  int data_num = 0;
   
   writen(fd, iddata, sizeof(iddata));
   readn(fd, ack, 4);
-  
+
   for (int x = 0; x < loop_count; x++) {
     for (int i = 0; i < winsize; i++) {
       rdtsc_64(tsc_l, tsc_u);
       log_tsc = (unsigned long int)tsc_u<<32 | tsc_l;
-      memcpy(&buf[i][msglen + 12], &log_tsc, sizeof(log_tsc));
+      memcpy(&buf[data_num][msglen + 12], &log_tsc, sizeof(log_tsc));
       
-      writen(fd, buf[i], msglen + 20);
+      writen(fd, buf[data_num], msglen + 20);
+      data_num++;
     } 
     readn(fd, ack, 4);
   }
@@ -161,8 +163,39 @@ void send_msg (char *host, int port_no,int count, int len, int winsize)
 
 int main (int argc, char *argv[])
 {
+  int count = 1;
+  int data_size = 1;
+  int win_size = 1;
+  int port_num = 8000;
 
-  send_msg("localhost",atoi(argv[1]),atoi(argv[2]),atoi(argv[3]),atoi(argv[4]));
+  if(argc > 1){
+    count = atoi(argv[1]);
+  }else{
+    printf("%s argument error count\n", __FILE__);
+    return 0;
+  }
+  
+  if(argc > 2){
+    data_size = atoi(argv[2]);
+  }else{
+    printf("%s argument error datasize\n", __FILE__);
+    return 0;
+  }
 
+  if(argc > 3){
+    win_size = atoi(argv[3]);
+  }else{
+    printf("%s argument error winsize\n", __FILE__);
+    return 0;
+  }
+  
+  if(argc > 4){
+    port_num = atoi(argv[4]);
+  }else{
+    printf("%s argument error portnum\n", __FILE__);
+    return 0;
+  }
+  
+  send_msg("localhost", count, data_size, win_size, port_num);
   return 0;
 }
