@@ -68,12 +68,10 @@ ssize_t readn(int fd, void *buf, size_t count)
 
 void send_msg (char *host, int count, int len,int winsize, int port_num){
   int loop_count = count / winsize;
-  
-  int msglen = len*1024;
-  char buf[count][msglen + 20];
+  int msglen = len * 1024;
+  char buf[msglen + 20];
   char iddata[16];
   int fd = socket(AF_INET, SOCK_STREAM, 0);
-  //buf[msglen + 20] = '\0';
 
   if (fd < 0) {
     perror("socket\n");
@@ -111,15 +109,12 @@ void send_msg (char *host, int count, int len,int winsize, int port_num){
   memcpy(&enddata[8],&winsize,sizeof(winsize));
   memcpy(&enddata[12],&dest,sizeof(dest));
 
-  for (int i = 0;i < loop_count;i++) {
-    memcpy(&buf[i][0],&len,sizeof(len));
-    memcpy(&buf[i][4],&command,sizeof(command));
-    memcpy(&buf[i][8],&winsize,sizeof(winsize));
-    
-    for (int j = 12; j < msglen + 12; j++) {
-      buf[i][j] = dummy_data;
-    }   
-  }
+  memcpy(&buf[0],&len,sizeof(len));
+  memcpy(&buf[4],&command,sizeof(command));
+  memcpy(&buf[8],&winsize,sizeof(winsize));
+  for (int j = 12; j < msglen + 12; j++) {
+    buf[j] = dummy_data;
+  }   
   
   while (1) {
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -137,8 +132,6 @@ void send_msg (char *host, int count, int len,int winsize, int port_num){
 
   unsigned int tsc_l, tsc_u; //uint32_t
   unsigned long int log_tsc;
-
-  int data_num = 0;
   
   writen(fd, iddata, sizeof(iddata));
   readn(fd, ack, 4);
@@ -147,14 +140,12 @@ void send_msg (char *host, int count, int len,int winsize, int port_num){
     for (int i = 0; i < winsize; i++) {
       rdtsc_64(tsc_l, tsc_u);
       log_tsc = (unsigned long int)tsc_u<<32 | tsc_l;
-      memcpy(&buf[data_num][msglen + 12], &log_tsc, sizeof(log_tsc));
+      memcpy(&buf[msglen + 12], &log_tsc, sizeof(log_tsc));
       
-      writen(fd, buf[data_num], msglen + 20);
-      data_num++;
+      writen(fd, buf, msglen + 20);
     } 
     readn(fd, ack, 4);
   }
-  //writen(fd, enddata, sizeof(enddata));
   
   if (close(fd) == -1) {
     printf("%d\n", errno);
@@ -195,7 +186,6 @@ int main (int argc, char *argv[])
     printf("%s argument error portnum\n", __FILE__);
     return 0;
   }
-  
   send_msg("localhost", count, data_size, win_size, port_num);
   return 0;
 }

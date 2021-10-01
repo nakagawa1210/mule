@@ -77,6 +77,7 @@ ssize_t writen(int fd,const void *vptr, size_t n)
 
 void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
 {
+  int loop_count = count / win_size;
   char buf[MAX_BUF_SIZE];
   uint64_t recv_time[MAX_COUNT][4];
   int data_num = 0;
@@ -145,7 +146,8 @@ void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
   readn(fd, setdata, 8);
 
   data_size = data_size * 1024;
-  while(1) {
+  
+  for(int x = 0;x < loop_count; x++){
     for (int i = 0;i < win_size; i++){
       readn(fd, buf, data_size + 36);
       log_tsc = gettsc();
@@ -155,23 +157,13 @@ void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
       memcpy(&recv_time[data_num][3], &log_tsc, sizeof(unsigned long int));
       data_num++;
     }
-    if(data_num == count)break;
     writen(fd, ack, sizeof(ack));
   }
-  //writen(fd, enddata, sizeof(enddata));
-  
-//	rdtsc_64(tsc_l, tsc_u);
-//	log_tsc[3][count] = (unsigned long int)tsc_u<<32 | tsc_l;
-//	memcpy(&log_tsc[0][count], buf, sizeof(unsigned long int));
-//	memcpy(&log_tsc[1][count], buf + sizeof(unsigned long int), sizeof(unsigned long int));
-//	memcpy(&log_tsc[2][count], buf + 2 * sizeof(unsigned long int), sizeof(unsigned long int));
-//	count++;
-//  }
-//
-//  unsigned long int start;
-//
-//  start = log_tsc[0][0];
-//
+
+  if (close(fd) == -1) {
+    printf("%d\n", errno);
+  }
+
   printf("num,send,svr_in,svr_out,recv\n");
   for (int i = 0; i < count; i++) {
     printf("%d,%lf,%lf,%lf,%lf\n",i,
@@ -181,15 +173,12 @@ void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
 	   (recv_time[i][3]) / CLOCK_HZ);
       }
   
-  if (close(fd) == -1) {
-    printf("%d\n", errno);
-  }
-  
   return;
 }
 
 int main(int argc, char *argv[])
 {
+  setvbuf(stdout, (char *)NULL, _IONBF, 0);
   int count = 1;
   int data_size = 1;
   int win_size = 1;

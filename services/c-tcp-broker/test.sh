@@ -17,7 +17,7 @@ sleep 1
 ./recv_client $1 $2 $3 $5 > log/$4$1_$2_$3_$TIME.log &
 RECVID=$!
 sleep 1
-./send_client.rb $1 $2 $3 $5 &
+./send_client $1 $2 $3 $5 &
 
 while(true)
 do
