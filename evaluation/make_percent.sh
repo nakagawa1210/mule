@@ -25,5 +25,3 @@ done < log/per_file.log
 
 ruby fc_for_per.rb log/per_sum_file.log
 
-:>| log/per_file.log
-:>| log/per_sum_file.log
