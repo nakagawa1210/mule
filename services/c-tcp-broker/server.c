@@ -22,15 +22,24 @@
 #define MAX_BUF_SIZE 5000
 #define MAX_FD_SIZE 1024
 
+#define CLOCK_HZ 2600000000.0
+
 #define rdtsc_64(lower, upper) asm __volatile ("rdtsc" : "=a"(lower), "=d" (upper));
 
 char array[MAX_COUNT][MAX_BUF_SIZE];
-int ary_len[MAX_COUNT];
 
 int datanum = 0;
 int recvnum = 0;
 
 //pthread_mutex_t mutex;
+
+unsigned long int gettsc()
+{
+  unsigned int tsc_l, tsc_u; //uint32_t
+
+  rdtsc_64(tsc_l, tsc_u);
+  return (unsigned long int)tsc_u<<32 | tsc_l;
+}
 
 void ackset(char *setbuf)
 {
@@ -129,7 +138,6 @@ ssize_t readn(int fd, void *buf, size_t count)
 int send_msg(int count, int length, int winsize,int fd)
 { 
   char sendbuf[MAX_BUF_SIZE];
-  unsigned int tsc_l, tsc_u;
   unsigned long int log_tsc;
   char sendack[4] = "ack";
   int loop_count = count / winsize;
@@ -137,8 +145,7 @@ int send_msg(int count, int length, int winsize,int fd)
   for(int x = 0;x < loop_count;x++){
     for(int i = 0; i< winsize ;i++){
       readn(fd, &sendbuf, length + 20);
-      rdtsc_64(tsc_l, tsc_u);
-      log_tsc = (unsigned long int)tsc_u<<32 | tsc_l;
+      log_tsc = gettsc();
 
       memcpy(&array[datanum][0], sendbuf,length + 20);
       memcpy(&array[datanum][length + 20] ,&log_tsc ,sizeof(log_tsc));
@@ -151,22 +158,24 @@ int send_msg(int count, int length, int winsize,int fd)
 
 int recv_msg(int count, int length, int winsize,int fd)
 {
-  
   char sendbuf[MAX_BUF_SIZE];
-  unsigned int tsc_l, tsc_u;
   unsigned long int log_tsc;
   char recvack[4];
   int loop_count = count / winsize;
   int len = 0;
-
+  int spin_count = 0;
+  
   for(int x = 0;x < loop_count;x++){
     for(int i = 0; i< winsize ;i++){
+      spin_count = 0;
       do{
 	len = datanum - recvnum;
+	spin_count++;
       }while(len <= 0);
 
-      rdtsc_64(tsc_l, tsc_u);
-      log_tsc = (unsigned long int)tsc_u<<32 | tsc_l;
+      memcpy(&array[recvnum][0],&len,sizeof(len));
+      memcpy(&array[recvnum][4],&spin_count,sizeof(spin_count));
+      log_tsc = gettsc();
       memcpy(&array[recvnum][length + 28],&log_tsc,sizeof(unsigned long int));
 
       writen(fd, &array[recvnum], length + 36);
@@ -187,6 +196,7 @@ int analyze(char *data, int fd){
   memcpy(&length,&data[0],4);
   memcpy(&command,&data[4],4);
   memcpy(&winsize,&data[8],4);
+  memcpy(&count,&data[12],4);
   
   int res = 0;
   int num = 0;
@@ -233,28 +243,7 @@ int main(int argc, char *argv[])
   int port_num = 8000;
 
   if(argc > 1){
-    count = atoi(argv[1]);
-  }else{
-    printf("%s argument error count\n", __FILE__);
-    return 0;
-  }
-  
-  if(argc > 2){
-    data_size = atoi(argv[2]);
-  }else{
-    printf("%s argument error datasize\n", __FILE__);
-    return 0;
-  }
-
-  if(argc > 3){
-    win_size = atoi(argv[3]);
-  }else{
-    printf("%s argument error winsize\n", __FILE__);
-    return 0;
-  }
-  
-  if(argc > 4){
-    port_num = atoi(argv[4]);
+    port_num = atoi(argv[1]);
   }else{
     printf("%s argument error portnum\n", __FILE__);
     return 0;
@@ -265,8 +254,7 @@ int main(int argc, char *argv[])
   struct sockaddr_in client_addr;
   socklen_t client_addr_len = sizeof client_addr;
   
-  int i=0;
-  for(i;i<2;i++){
+  for(int i = 0;i<2;i++){
     int fd = accept(listener,(struct sockaddr *) &client_addr, &client_addr_len);
     int on =1;
     int ret;

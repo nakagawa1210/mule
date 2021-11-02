@@ -80,6 +80,8 @@ void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
   int loop_count = count / win_size;
   char buf[MAX_BUF_SIZE];
   uint64_t recv_time[MAX_COUNT][4];
+  int len_log[MAX_COUNT];
+  int spin_log[MAX_COUNT];
   int data_num = 0;
   int fd = socket(AF_INET, SOCK_STREAM, 0);
   unsigned long int tsc; //uint64_t
@@ -105,7 +107,6 @@ void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
   memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
 
   int command = 2;
-  int dest = 4;
   int endnum = 9;
   char iddata[16];
   char enddata[16];
@@ -113,12 +114,12 @@ void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
   memcpy(&iddata[0],&data_size, 4);
   memcpy(&iddata[4],&command, 4);
   memcpy(&iddata[8],&win_size, 4);
-  memcpy(&iddata[12],&dest, 4);
+  memcpy(&iddata[12],&count, 4);
 
   memcpy(&enddata[0],&data_size, 4);
   memcpy(&enddata[4],&endnum, 4);
   memcpy(&enddata[8],&win_size, 4);
-  memcpy(&enddata[12],&dest, 4);
+  memcpy(&enddata[12],&count, 4);
   
   while (1) {     
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
@@ -155,6 +156,8 @@ void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
       memcpy(&recv_time[data_num][1], &buf[data_size +20], sizeof(unsigned long int));
       memcpy(&recv_time[data_num][2], &buf[data_size +28], sizeof(unsigned long int));
       memcpy(&recv_time[data_num][3], &log_tsc, sizeof(unsigned long int));
+      memcpy(&len_log[data_num], &buf[0], sizeof(int));
+      memcpy(&spin_log[data_num], &buf[4], sizeof(int));
       data_num++;
     }
     writen(fd, ack, sizeof(ack));
@@ -164,13 +167,16 @@ void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
     printf("%d\n", errno);
   }
 
+  spin_log[0] = 0;
   printf("num,send,svr_in,svr_out,recv\n");
   for (int i = 0; i < count; i++) {
-    printf("%d,%lf,%lf,%lf,%lf\n",i,
+    printf("%d,%lf,%lf,%lf,%lf,%d,%d\n",i,
 	   (recv_time[i][0]) / CLOCK_HZ,
 	   (recv_time[i][1]) / CLOCK_HZ,
 	   (recv_time[i][2]) / CLOCK_HZ,
-	   (recv_time[i][3]) / CLOCK_HZ);
+	   (recv_time[i][3]) / CLOCK_HZ,
+	   len_log[i],
+	   spin_log[i]);
       }
   
   return;

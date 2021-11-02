@@ -19,6 +19,14 @@
 #define MAX_COUNT 100000
 #define MEM_SIZE 5000
 
+unsigned long int gettsc()
+{
+  unsigned int tsc_l, tsc_u; //uint32_t
+
+  rdtsc_64(tsc_l, tsc_u);
+  return (unsigned long int)tsc_u<<32 | tsc_l;
+}
+
 ssize_t writen(int fd,const void *vptr, size_t n)
 {
   size_t nleft;
@@ -93,7 +101,6 @@ void send_msg (char *host, int count, int len,int winsize, int port_num){
   
   int length = len;
   int command = 1;
-  int dest = 3;
   int endnum = 9;
   char enddata[16];
   char ack[4];
@@ -102,12 +109,12 @@ void send_msg (char *host, int count, int len,int winsize, int port_num){
   memcpy(&iddata[0],&length,sizeof(length));
   memcpy(&iddata[4],&command,sizeof(command));
   memcpy(&iddata[8],&winsize,sizeof(winsize));
-  memcpy(&iddata[12],&dest,sizeof(dest));
+  memcpy(&iddata[12],&count,sizeof(count));
 
   memcpy(&enddata[0],&len,sizeof(len));
   memcpy(&enddata[4],&endnum,sizeof(endnum));
   memcpy(&enddata[8],&winsize,sizeof(winsize));
-  memcpy(&enddata[12],&dest,sizeof(dest));
+  memcpy(&enddata[12],&count,sizeof(count));
 
   memcpy(&buf[0],&len,sizeof(len));
   memcpy(&buf[4],&command,sizeof(command));
@@ -130,7 +137,6 @@ void send_msg (char *host, int count, int len,int winsize, int port_num){
   int ret;
   ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
 
-  unsigned int tsc_l, tsc_u; //uint32_t
   unsigned long int log_tsc;
   
   writen(fd, iddata, sizeof(iddata));
@@ -138,8 +144,7 @@ void send_msg (char *host, int count, int len,int winsize, int port_num){
 
   for (int x = 0; x < loop_count; x++) {
     for (int i = 0; i < winsize; i++) {
-      rdtsc_64(tsc_l, tsc_u);
-      log_tsc = (unsigned long int)tsc_u<<32 | tsc_l;
+      log_tsc = gettsc();
       memcpy(&buf[msglen + 12], &log_tsc, sizeof(log_tsc));
       
       writen(fd, buf, msglen + 20);
