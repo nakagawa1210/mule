@@ -30,3 +30,6 @@ $ make
 
 $ ./test.sh 100 1 10 test 10000
 
+(4) make_percent.sh を実行する．以下のコマンドを実行すると直前に実行してlog/latest.log に記述されている実行履歴の割合を計算して一つのファイルにまとめて出力する．
+
+$ ./make_percent.sh
