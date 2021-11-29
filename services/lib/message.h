@@ -32,11 +32,14 @@ struct message_ack {
   char payload[MSG_PAYLOAD_LEN];
 };
 
-#define SEND_N_REQ  1 // sender -> server (+payload)
-#define SEND_ACK  2 // server -> sender
+#define SEND_MSG 1      // sender -> server (+payload)
+#define SEND_MSG_ACK 2  // sender -> server (+payload) then sender wait ack 
+#define SEND_ACK 3      // server -> sender
 
-#define RECV_N_REQ  3 // receiver -> server
-#define RECV_MSG  4 // server -> receiver (+payload)
+#define RECV_N_REQ 3    // receiver -> server
+#define RECV_MSG 4      // server -> receiver (+payload)
+#define RECV_ACK 6      // receiver -> server
+
 
 #define SENDER_SEND 1
 #define SERVER_RECV 2

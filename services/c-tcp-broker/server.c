@@ -15,6 +15,8 @@
 #include <signal.h>
 #include <netinet/tcp.h>
 
+#include "../lib/message.h"
+
 #define SERVER_PORT 9999
 #define MAX_EVENTS 3000
 #define BACKLOG 10
@@ -225,13 +227,20 @@ int analyze(char *data, int fd){
 
 void *loop (void* pArg){
   int *fdp = (int*) pArg;
-  char buf[16];
-  int res;
+  struct message msg;
   int fd = *fdp;
+  int n = 0;
+  
   while(1){
-    readn(fd, buf, 16);
-    res = analyze(buf, fd);
-    if(res)break;
+    if((n = readn(fd, &msg, MSG_TOTAL_LEN)) != MSG_TOTAL_LEN) break;
+    
+    switch(msg.hdr.msg_type) {
+    case SEND_MSG:break;
+    case SEND_MSG_ACK:break;
+    case RECV_N_REQ:break;
+    case RECV_ACK:break;
+    default:break;
+    }
   }
 }
 

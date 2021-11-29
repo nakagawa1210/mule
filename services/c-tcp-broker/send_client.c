@@ -86,7 +86,11 @@ int send_n_request (int fd,
   uint64_t log_tsc;
   
   for (int i = 0; i < n; i++){
-    msg_fill(&smsg, SEND_N_REQ, n, saddr, daddr, payload, sizeof(payload));
+    if(i == n-1){
+      msg_fill(&smsg,SEND_MSG_ACK, n, saddr, daddr, payload,sizeof(payload));
+    }else{
+      msg_fill(&smsg, SEND_MSG, n, saddr, daddr, payload, sizeof(payload));
+    }
     log_tsc = gettsc();
     msg_assign_time_stamp(&smsg, log_tsc, SENDER_SEND);
     send(fd, &smsg, MSG_TOTAL_LEN, 0);
