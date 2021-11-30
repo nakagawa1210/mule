@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdint.h>
 
 #define MSG_PAYLOAD_LEN 1024
@@ -54,9 +56,9 @@ struct message *msg_fill_hdr(struct message *msg,
 
 struct message *msg_fill(struct message *msg,
                          uint32_t msg_type,
+			 uint32_t ws,
                          uint32_t saddr,
                          uint32_t daddr,
-                         uint32_t id,
                          void *payload,
                          int payload_len);
 

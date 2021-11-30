@@ -16,6 +16,7 @@
 #include <netinet/tcp.h>
 
 #include "../lib/message.h"
+#include "../lib/network.h"
 
 #define SERVER_PORT 9999
 #define MAX_EVENTS 3000
@@ -29,6 +30,7 @@
 #define rdtsc_64(lower, upper) asm __volatile ("rdtsc" : "=a"(lower), "=d" (upper));
 
 char array[MAX_COUNT][MAX_BUF_SIZE];
+struct message msg_ary[MAX_COUNT];
 
 int datanum = 0;
 int recvnum = 0;
@@ -137,25 +139,15 @@ ssize_t readn(int fd, void *buf, size_t count)
   }
   return count;
 }
-int send_msg(int count, int length, int winsize,int fd)
-{ 
-  char sendbuf[MAX_BUF_SIZE];
+
+int send_msg(struct message *msg){
   unsigned long int log_tsc;
-  char sendack[4] = "ack";
-  int loop_count = count / winsize;
+  log_tsc = gettsc();
+  msg_assign_time_stamp(msg, log_tsc, SENDER_SEND);
+  msg_ary[datanum] = *msg;
+  datanum++;
 
-  for(int x = 0;x < loop_count;x++){
-    for(int i = 0; i< winsize ;i++){
-      readn(fd, &sendbuf, length + 20);
-      log_tsc = gettsc();
-
-      memcpy(&array[datanum][0], sendbuf,length + 20);
-      memcpy(&array[datanum][length + 20] ,&log_tsc ,sizeof(log_tsc));
-      datanum++;	     
-    }
-    writen(fd, sendack, sizeof(sendack));
-  }
-  return 1;
+  return 0;
 }
 
 int recv_msg(int count, int length, int winsize,int fd)
@@ -188,43 +180,6 @@ int recv_msg(int count, int length, int winsize,int fd)
   return 1;
 }
 
-int analyze(char *data, int fd){
-  //int length = *((int*)&data[0]);
-  int count = 100000;
-  int length = 0;
-  int command = 0;
-  int winsize = 0;
-  
-  memcpy(&length,&data[0],4);
-  memcpy(&command,&data[4],4);
-  memcpy(&winsize,&data[8],4);
-  memcpy(&count,&data[12],4);
-  
-  int res = 0;
-  int num = 0;
-  char ack[4] = "ack";
-  char rack[8];
-
-  switch (command){
-  case 1 :
-    writen(fd, ack, 4);
-    res = send_msg(count, length * 1024, winsize, fd);
-    break;
-  case 2 :
-    ackset(rack);
-    writen(fd, rack, 8);
-    res = recv_msg(count, length * 1024, winsize, fd);
-    break;
-  case 9 :
-    res = 1;
-    break;
-  default:
-    res = 0;
-    break;
-  }
-  return res;
-}
-
 void *loop (void* pArg){
   int *fdp = (int*) pArg;
   struct message msg;
@@ -232,11 +187,16 @@ void *loop (void* pArg){
   int n = 0;
   
   while(1){
-    if((n = readn(fd, &msg, MSG_TOTAL_LEN)) != MSG_TOTAL_LEN) break;
+    if((n = net_recv_msg(fd, &msg)) != MSG_TOTAL_LEN) break;
     
     switch(msg.hdr.msg_type) {
-    case SEND_MSG:break;
-    case SEND_MSG_ACK:break;
+    case SEND_MSG:
+      send_msg(&msg);
+      break;
+    case SEND_MSG_ACK:
+      send_msg(&msg);
+      net_send_ack(fd, &msg.payload, SEND_ACK, msg.hdr.ws, msg.hdr.saddr, msg.hdr.daddr);
+      break;
     case RECV_N_REQ:break;
     case RECV_ACK:break;
     default:break;
