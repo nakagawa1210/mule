@@ -29,11 +29,10 @@
 
 #define rdtsc_64(lower, upper) asm __volatile ("rdtsc" : "=a"(lower), "=d" (upper));
 
-char array[MAX_COUNT][MAX_BUF_SIZE];
 struct message msg_ary[MAX_COUNT];
 
-int datanum = 0;
-int recvnum = 0;
+int data_num = 0;
+int recv_num = 0;
 
 //pthread_mutex_t mutex;
 
@@ -43,15 +42,6 @@ unsigned long int gettsc()
 
   rdtsc_64(tsc_l, tsc_u);
   return (unsigned long int)tsc_u<<32 | tsc_l;
-}
-
-void ackset(char *setbuf)
-{
-  while((datanum - recvnum) <= 0){
-    //sleep(1);
-  }
-  memcpy(&setbuf[0], &array[recvnum][0], 4);
-  memcpy(&setbuf[4], &array[recvnum][8], 4);
 }
 
 static void die(const char* msg)
@@ -93,91 +83,29 @@ static int setup_socket(int port_no)
   return sock;
 }
 
-ssize_t writen(int fd,const void *vptr, size_t n)
-{
-  size_t nleft;
-  ssize_t nwritten;
-  const char *ptr;
-
-  //現在の文字列の位置
-  ptr = vptr;
-
-  //残りの文字列の長さの初期化
-  nleft = n;
-  while (nleft > 0) {
-    if ((nwritten = write(fd, ptr, nleft)) <= 0) {
-      if (nwritten < 0 && errno == EINTR) {
-	nwritten = 0;  // try again
-      } else {
-	return -1;
-      }
-    }
-    nleft -= nwritten;
-    ptr += nwritten;
-  }
-  return n;
-}
-
-ssize_t readn(int fd, void *buf, size_t count)
-{
-  int *ptr = buf;
-  size_t nleft = count;
-  ssize_t nread;
-
-  while (nleft > 0) {
-    if ((nread = read(fd, ptr, nleft)) < 0) {
-      if (errno == EINTR)
-        continue;
-      else
-        return -1;
-    }
-    if (nread == 0) {
-      return count - nleft;
-    }
-    nleft -= nread;
-    ptr += nread;
-  }
-  return count;
-}
-
-int send_msg(struct message *msg){
-  unsigned long int log_tsc;
+int store_msg(struct message *msg){
+  uint64_t log_tsc;
   log_tsc = gettsc();
-  msg_assign_time_stamp(msg, log_tsc, SENDER_SEND);
-  msg_ary[datanum] = *msg;
-  datanum++;
+  msg_assign_time_stamp(msg, log_tsc, SERVER_RECV);
+  msg_ary[data_num] = *msg;
+  data_num++;
 
   return 0;
 }
 
-int recv_msg(int count, int length, int winsize,int fd)
-{
-  char sendbuf[MAX_BUF_SIZE];
-  unsigned long int log_tsc;
-  char recvack[4];
-  int loop_count = count / winsize;
-  int len = 0;
+int shift_msg(struct message *msg){
+  uint64_t log_tsc;
   int spin_count = 0;
+  while(recv_num >= data_num){
+    spin_count++;
+  }  
   
-  for(int x = 0;x < loop_count;x++){
-    for(int i = 0; i< winsize ;i++){
-      spin_count = 0;
-      do{
-	len = datanum - recvnum;
-	spin_count++;
-      }while(len <= 0);
-
-      memcpy(&array[recvnum][0],&len,sizeof(len));
-      memcpy(&array[recvnum][4],&spin_count,sizeof(spin_count));
-      log_tsc = gettsc();
-      memcpy(&array[recvnum][length + 28],&log_tsc,sizeof(unsigned long int));
-
-      writen(fd, &array[recvnum], length + 36);
-      recvnum++;	     
-    }
-    readn(fd, recvack, sizeof(recvack));
-  }
-  return 1;
+  *msg = msg_ary[recv_num];
+  recv_num++;
+  msg->hdr.msg_type = RECV_MSG;
+  log_tsc = gettsc();
+  msg_assign_time_stamp(msg, log_tsc, SERVER_SEND);
+  return 0;
 }
 
 void *loop (void* pArg){
@@ -191,13 +119,18 @@ void *loop (void* pArg){
     
     switch(msg.hdr.msg_type) {
     case SEND_MSG:
-      send_msg(&msg);
+      store_msg(&msg);
       break;
     case SEND_MSG_ACK:
-      send_msg(&msg);
+      store_msg(&msg);
       net_send_ack(fd, &msg.payload, SEND_ACK, msg.hdr.ws, msg.hdr.saddr, msg.hdr.daddr);
       break;
-    case RECV_N_REQ:break;
+    case RECV_N_REQ:
+      for(int i = 0; i < msg.hdr.ws; i++){ 
+	shift_msg(&msg);
+	net_send_msg(fd, &msg);
+      }
+      break;
     case RECV_ACK:break;
     default:break;
     }

@@ -8,5 +8,5 @@ svr: server.c
 send: send_client.c
 	gcc send_client.c ../lib/message.c ../lib/network.c -o send_client -std=gnu99
 recv: recv_client.c
-	gcc recv_client.c -o recv_client -std=gnu99
+	gcc recv_client.c ../lib/message.c ../lib/network.c -o recv_client -std=gnu99
 

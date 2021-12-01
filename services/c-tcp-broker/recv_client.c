@@ -10,12 +10,19 @@
 #include <netdb.h>
 #include <stdlib.h>
 #include <netinet/tcp.h>
+
+#include "../lib/message.h"
+#include "../lib/network.h"
+
 #define rdtsc_64(lower, upper) asm __volatile ("rdtsc" : "=a"(lower), "=d" (upper));
 
 #define CLOCK_HZ 2600000000.0
 #define PORT_NO 9999
 #define MAX_BUF_SIZE 5000
-#define MAX_COUNT 200000
+#define MAX_COUNT 100000
+
+struct message msg[MAX_COUNT];
+int data_num = 0;
 
 unsigned long int gettsc()
 {
@@ -25,69 +32,27 @@ unsigned long int gettsc()
   return (unsigned long int)tsc_u<<32 | tsc_l;
 }
 
-/* Read "n" bytes from a descriptor. */
-ssize_t readn(int fd, void *buf, size_t count)
-{
-  char *ptr = buf;
-  size_t nleft = count;
-  ssize_t nread;
-
-  while (nleft > 0) {
-    if ((nread = read(fd, ptr, nleft)) < 0) {
-
-      if (errno == EINTR)
-        continue;
-      else
-        return -1;
-    }
-
-    if (nread == 0) {
-      return count - nleft;
-    }
-    nleft -= nread;
-    ptr += nread;
+int recv_n_request (int fd,
+		    uint32_t n,
+		    uint32_t saddr,
+		    uint32_t daddr,
+		    void *payload){
+  struct message rmsg;
+  uint64_t log_tsc;
+  
+  for (int i = 0; i < n; i++){
+    net_recv_msg(fd, &rmsg);
+    log_tsc = gettsc();
+    msg_assign_time_stamp(&rmsg, log_tsc, RECVER_RECV);
+    msg[data_num] = rmsg;
+    data_num++;
   }
-  return count;
+  return 0;
 }
 
-ssize_t writen(int fd,const void *vptr, size_t n)
-{
-  size_t nleft;
-  ssize_t nwritten;
-  const char *ptr;
-
-  //現在の文字列の位置
-  ptr = vptr;
-
-  //残りの文字列の長さの初期化
-  nleft = n;
-  while (nleft > 0) {
-    if ((nwritten = write(fd, ptr, nleft)) <= 0) {
-      if (nwritten < 0 && errno == EINTR) {
-	nwritten = 0;  // try again
-      } else {
-	return -1;
-      }
-    }
-    nleft -= nwritten;
-    ptr += nwritten;
-  }
-  return n;
-}
-
-void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
-{
-  int loop_count = count / win_size;
-  char buf[MAX_BUF_SIZE];
-  uint64_t recv_time[MAX_COUNT][4];
-  int len_log[MAX_COUNT];
-  int spin_log[MAX_COUNT];
-  int data_num = 0;
+void recv_msg(char *host, int count, int data_size, uint32_t win_size, int port_num){
   int fd = socket(AF_INET, SOCK_STREAM, 0);
-  unsigned long int tsc; //uint64_t
-
-  uint64_t end = 0;
-
+ 
   if (fd < 0) {
     perror("socket");
     return;
@@ -106,21 +71,6 @@ void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
   addr.sin_port = htons(port_num);
   memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
 
-  int command = 2;
-  int endnum = 9;
-  char iddata[16];
-  char enddata[16];
-
-  memcpy(&iddata[0],&data_size, 4);
-  memcpy(&iddata[4],&command, 4);
-  memcpy(&iddata[8],&win_size, 4);
-  memcpy(&iddata[12],&count, 4);
-
-  memcpy(&enddata[0],&data_size, 4);
-  memcpy(&enddata[4],&endnum, 4);
-  memcpy(&enddata[8],&win_size, 4);
-  memcpy(&enddata[12],&count, 4);
-  
   while (1) {     
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 	  sleep(1);
@@ -133,51 +83,39 @@ void recv_msg(char *host, int count, int data_size, int win_size, int port_num)
   int on=1;
   int ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
 
-  unsigned long int log_tsc;
-  char setdata[8];
-  int flag = 0;
-  char ack[4];
-  char endack[4];
+  int loop_count = count / win_size;
+  int rem_count = count % win_size;
+  char payload[MSG_PAYLOAD_LEN] = "Hello";
+  uint32_t saddr = 200;
+  uint32_t daddr = 100;
+  struct message req_msg;
+  struct message ack_msg;
   
-  memcpy(&ack[0],&flag,sizeof(flag));
-  flag = 1;
-  memcpy(&endack[0],&flag,sizeof(flag));
-  
-  writen(fd, iddata, sizeof(iddata));
-  readn(fd, setdata, 8);
-
-  data_size = data_size * 1024;
-  
-  for(int x = 0;x < loop_count; x++){
-    for (int i = 0;i < win_size; i++){
-      readn(fd, buf, data_size + 36);
-      log_tsc = gettsc();
-      memcpy(&recv_time[data_num][0], &buf[data_size +12], sizeof(unsigned long int));
-      memcpy(&recv_time[data_num][1], &buf[data_size +20], sizeof(unsigned long int));
-      memcpy(&recv_time[data_num][2], &buf[data_size +28], sizeof(unsigned long int));
-      memcpy(&recv_time[data_num][3], &log_tsc, sizeof(unsigned long int));
-      memcpy(&len_log[data_num], &buf[0], sizeof(int));
-      memcpy(&spin_log[data_num], &buf[4], sizeof(int));
-      data_num++;
-    }
-    writen(fd, ack, sizeof(ack));
+  msg_fill(&req_msg, RECV_N_REQ, win_size, saddr, daddr, payload, sizeof(payload));
+  msg_fill(&ack_msg, RECV_ACK, rem_count, saddr, daddr, payload, sizeof(payload));
+  for (int i = 0; i < loop_count; i++) {
+    net_send_msg(fd, &req_msg);
+    recv_n_request(fd, win_size, saddr, daddr, payload);
   }
+  if(rem_count != 0) {
+    req_msg.hdr.ws = rem_count;
+    net_send_msg(fd, &req_msg);
+    recv_n_request(fd, rem_count, saddr, daddr, payload);  
+  }
+  net_send_msg(fd, &ack_msg);
 
   if (close(fd) == -1) {
     printf("%d\n", errno);
   }
 
-  spin_log[0] = 0;
   printf("num,send,svr_in,svr_out,recv\n");
-  for (int i = 0; i < count; i++) {
-    printf("%d,%lf,%lf,%lf,%lf,%d,%d\n",i,
-	   (recv_time[i][0]) / CLOCK_HZ,
-	   (recv_time[i][1]) / CLOCK_HZ,
-	   (recv_time[i][2]) / CLOCK_HZ,
-	   (recv_time[i][3]) / CLOCK_HZ,
-	   len_log[i],
-	   spin_log[i]);
-      }
+  for (int i = 0; i < data_num; i++) {
+    printf("%d,%lf,%lf,%lf,%lf\n",i,
+	   (msg[i].hdr.sender_send_time) / CLOCK_HZ,
+	   (msg[i].hdr.server_recv_time) / CLOCK_HZ,
+	   (msg[i].hdr.server_send_time) / CLOCK_HZ,
+	   (msg[i].hdr.recver_recv_time) / CLOCK_HZ);
+  }
   
   return;
 }
@@ -187,7 +125,7 @@ int main(int argc, char *argv[])
   setvbuf(stdout, (char *)NULL, _IONBF, 0);
   int count = 1;
   int data_size = 1;
-  int win_size = 1;
+  uint32_t win_size = 1;
   int port_num = 8000;
 
   if(argc > 1){
