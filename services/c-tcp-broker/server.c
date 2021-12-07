@@ -31,9 +31,10 @@
 
 struct message msg_ary[MAX_COUNT];
 
-int data_num = 0;
-int recv_num = 0;
+volatile int data_num = 0;
+volatile int recv_num = 0;
 
+int msg_len[MAX_COUNT] = {0};
 //pthread_mutex_t mutex;
 
 unsigned long int gettsc()
@@ -99,6 +100,7 @@ int shift_msg(struct message *msg){
   while(recv_num >= data_num){
     spin_count++;
   }  
+  msg_len[recv_num] = data_num - recv_num;
   
   *msg = msg_ary[recv_num];
   recv_num++;
@@ -120,18 +122,27 @@ void *loop (void* pArg){
     switch(msg.hdr.msg_type) {
     case SEND_MSG:
       store_msg(&msg);
+      if(msg.hdr.ws == 1){
+	net_send_ack(fd, &msg.payload, SEND_ACK, msg.hdr.ws, msg.hdr.saddr, msg.hdr.daddr);
+      }
       break;
     case SEND_MSG_ACK:
       store_msg(&msg);
       net_send_ack(fd, &msg.payload, SEND_ACK, msg.hdr.ws, msg.hdr.saddr, msg.hdr.daddr);
       break;
-    case RECV_N_REQ:
-      for(int i = 0; i < msg.hdr.ws; i++){ 
+    case RECV_N_REQ:{
+      int ws = msg.hdr.ws;
+      for(int i = 0; i < ws; i++){
 	shift_msg(&msg);
 	net_send_msg(fd, &msg);
       }
+    }
       break;
-    case RECV_ACK:break;
+    case RECV_ACK:
+      for(int i = 0;i < recv_num;i++){
+	printf("%d,%d\n",i,msg_len[i]);
+      }
+      break;
     default:break;
     }
   }

@@ -20,6 +20,7 @@
 #define PORT_NO 9999
 #define MAX_BUF_SIZE 5000
 #define MAX_COUNT 100000
+#define WS_1 1
 
 struct message msg[MAX_COUNT];
 int data_num = 0;
@@ -32,25 +33,32 @@ unsigned long int gettsc()
   return (unsigned long int)tsc_u<<32 | tsc_l;
 }
 
-int recv_n_request (int fd,
-		    uint32_t n,
-		    uint32_t saddr,
-		    uint32_t daddr,
-		    void *payload){
+int recv_msg(int fd,
+	     uint32_t saddr,
+	     uint32_t daddr){
   struct message rmsg;
   uint64_t log_tsc;
   
+  net_recv_msg(fd, &rmsg);
+  log_tsc = gettsc();
+  msg_assign_time_stamp(&rmsg, log_tsc, RECVER_RECV);
+  msg[data_num] = rmsg;
+  data_num++;
+  
+  return 0;
+}
+
+int recv_n_msg (int fd,
+		uint32_t n,
+		uint32_t saddr,
+		uint32_t daddr) {
   for (int i = 0; i < n; i++){
-    net_recv_msg(fd, &rmsg);
-    log_tsc = gettsc();
-    msg_assign_time_stamp(&rmsg, log_tsc, RECVER_RECV);
-    msg[data_num] = rmsg;
-    data_num++;
+    recv_msg(fd, saddr, daddr);
   }
   return 0;
 }
 
-void recv_msg(char *host, int count, int data_size, uint32_t win_size, int port_num){
+void recv_msgs(char *host, int count, int data_size, uint32_t win_size, int port_num){
   int fd = socket(AF_INET, SOCK_STREAM, 0);
  
   if (fd < 0) {
@@ -83,25 +91,32 @@ void recv_msg(char *host, int count, int data_size, uint32_t win_size, int port_
   int on=1;
   int ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
 
-  int loop_count = count / win_size;
-  int rem_count = count % win_size;
   char payload[MSG_PAYLOAD_LEN] = "Hello";
   uint32_t saddr = 200;
   uint32_t daddr = 100;
-  struct message req_msg;
+  struct message ws_1_msg;
+  struct message ws_msg;
   struct message ack_msg;
+  int recv_count = 0;
   
-  msg_fill(&req_msg, RECV_N_REQ, win_size, saddr, daddr, payload, sizeof(payload));
-  msg_fill(&ack_msg, RECV_ACK, rem_count, saddr, daddr, payload, sizeof(payload));
-  for (int i = 0; i < loop_count; i++) {
-    net_send_msg(fd, &req_msg);
-    recv_n_request(fd, win_size, saddr, daddr, payload);
+  msg_fill(&ws_1_msg, RECV_N_REQ, WS_1, saddr, daddr, payload, sizeof(payload));
+  msg_fill(&ws_msg, RECV_N_REQ, win_size, saddr, daddr, payload, sizeof(payload));
+  msg_fill(&ack_msg, RECV_ACK, WS_1, saddr, daddr, payload, sizeof(payload));
+
+  net_send_msg(fd, &ws_1_msg);
+  recv_n_msg(fd, WS_1, saddr, daddr);
+  recv_count += WS_1;
+  
+  while(recv_count + win_size < count){
+    net_send_msg(fd, &ws_msg);
+    recv_n_msg(fd, win_size, saddr, daddr);
+    recv_count += win_size;
   }
-  if(rem_count != 0) {
-    req_msg.hdr.ws = rem_count;
-    net_send_msg(fd, &req_msg);
-    recv_n_request(fd, rem_count, saddr, daddr, payload);  
-  }
+  
+  msg_fill(&ws_msg, RECV_N_REQ, count - recv_count, saddr, daddr, payload, sizeof(payload));
+
+  net_send_msg(fd, &ws_msg);
+  recv_n_msg(fd, count - recv_count, saddr, daddr);
   net_send_msg(fd, &ack_msg);
 
   if (close(fd) == -1) {
@@ -160,7 +175,7 @@ int main(int argc, char *argv[])
     printf("augument\n");
     return 0;
   }
-  recv_msg("localhost", count, data_size, win_size, port_num);
+  recv_msgs("localhost", count, data_size, win_size, port_num);
   
   return 0;
 }

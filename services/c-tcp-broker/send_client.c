@@ -22,6 +22,7 @@
 #define PORT_NO 9999
 #define MAX_COUNT 100000
 #define MEM_SIZE 5000
+#define WS_1 1
 
 unsigned long int gettsc(){
   unsigned int tsc_l, tsc_u; //uint32_t
@@ -51,7 +52,22 @@ int send_n_request (int fd,
   return 0;
 }
 
-void send_msg (char *host, int count, int len, uint32_t win_size, int port_num){
+int send_msg (int fd,
+	      uint32_t n,
+	      uint32_t saddr,
+	      uint32_t daddr,
+	      void *payload){
+  struct message smsg;
+  uint64_t log_tsc;
+  msg_fill(&smsg,SEND_MSG, n, saddr, daddr, payload,sizeof(payload));
+  log_tsc = gettsc();
+  msg_assign_time_stamp(&smsg, log_tsc, SENDER_SEND);
+  net_send_msg(fd, &smsg);
+  
+  return 0;
+}
+
+void send_msgs (char *host, int count, int len, uint32_t win_size, int port_num){
 
   int fd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -90,21 +106,28 @@ void send_msg (char *host, int count, int len, uint32_t win_size, int port_num){
   //int fd = net_connect(host, port_num);
 
   //start_send_messages
-  int loop_count = count / win_size;
-  int rem_count = count % win_size;
   char payload[MSG_PAYLOAD_LEN] = "Hello";
   uint32_t saddr = 100;
   uint32_t daddr = 200;
-  struct message tmp_msg;
+  struct message msg_ack;
+  int send_count = 0;
+
+  send_msg(fd, WS_1, saddr, daddr, payload);
+  net_recv_msg(fd, &msg_ack);
+  send_count += WS_1;
   
-  for (int i = 0; i < loop_count; i++) {
-    send_n_request(fd, win_size, saddr, daddr, payload);
-    net_recv_msg(fd, &tmp_msg);
+  while(send_count + msg_ack.hdr.ws < count){
+    for (uint32_t i = msg_ack.hdr.ws; i > 0; i--) {
+      send_msg(fd, i, saddr, daddr, payload);
+    }
+    net_recv_msg(fd, &msg_ack);
+    send_count += msg_ack.hdr.ws;
   }
-  if(rem_count != 0) {
-    send_n_request(fd, rem_count, saddr, daddr, payload);  
-    net_recv_msg(fd, &tmp_msg);
+  for (uint32_t i = (count - send_count); i > 0; i--){
+    send_msg(fd, i, saddr, daddr, payload);
   }
+  net_recv_msg(fd, &msg_ack);
+  
   //end_sendmessages
   
   if (close(fd) == -1) {
@@ -149,6 +172,6 @@ int main (int argc, char *argv[])
   }
 
   
-  send_msg("localhost", count, data_size, win_size, port_num);
+  send_msgs("localhost", count, data_size, win_size, port_num);
   return 0;
 }
