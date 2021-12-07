@@ -67,6 +67,18 @@ int send_msg (int fd,
   return 0;
 }
 
+int send_msg_ack (int fd,
+		  uint32_t saddr,
+		  uint32_t daddr,
+		  void *payload){
+  struct message smsg;
+  uint64_t log_tsc;
+  msg_fill(&smsg,SEND_MSG_ACK, WS_1, saddr, daddr, payload,sizeof(payload));
+  net_send_msg(fd, &smsg);
+  
+  return 0;
+}
+
 void send_msgs (char *host, int count, int len, uint32_t win_size, int port_num){
 
   int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -109,19 +121,23 @@ void send_msgs (char *host, int count, int len, uint32_t win_size, int port_num)
   char payload[MSG_PAYLOAD_LEN] = "Hello";
   uint32_t saddr = 100;
   uint32_t daddr = 200;
+  uint32_t ws;
   struct message msg_ack;
   int send_count = 0;
 
-  send_msg(fd, WS_1, saddr, daddr, payload);
+  send_msg_ack(fd, saddr, daddr, payload);
   net_recv_msg(fd, &msg_ack);
-  send_count += WS_1;
+
+  //ws = msg_ack.hdr.ws;
+  ws = win_size;
   
-  while(send_count + msg_ack.hdr.ws < count){
-    for (uint32_t i = msg_ack.hdr.ws; i > 0; i--) {
+  while(send_count + ws < count){
+    for (uint32_t i = ws; i > 0; i--) {
       send_msg(fd, i, saddr, daddr, payload);
     }
     net_recv_msg(fd, &msg_ack);
-    send_count += msg_ack.hdr.ws;
+    send_count += ws;
+    //ws = msg_ack.hdr.ws;
   }
   for (uint32_t i = (count - send_count); i > 0; i--){
     send_msg(fd, i, saddr, daddr, payload);

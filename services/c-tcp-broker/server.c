@@ -94,7 +94,7 @@ int store_msg(struct message *msg){
   return 0;
 }
 
-int shift_msg(struct message *msg){
+int shift_msg(struct message *msg, uint32_t ws){
   uint64_t log_tsc;
   int spin_count = 0;
   while(recv_num >= data_num){
@@ -105,6 +105,7 @@ int shift_msg(struct message *msg){
   *msg = msg_ary[recv_num];
   recv_num++;
   msg->hdr.msg_type = RECV_MSG;
+  msg->hdr.ws = ws;
   log_tsc = gettsc();
   msg_assign_time_stamp(msg, log_tsc, SERVER_SEND);
   return 0;
@@ -127,13 +128,12 @@ void *loop (void* pArg){
       }
       break;
     case SEND_MSG_ACK:
-      store_msg(&msg);
       net_send_ack(fd, &msg.payload, SEND_ACK, msg.hdr.ws, msg.hdr.saddr, msg.hdr.daddr);
       break;
     case RECV_N_REQ:{
       int ws = msg.hdr.ws;
-      for(int i = 0; i < ws; i++){
-	shift_msg(&msg);
+      for(int i = ws; i > 0; i--){
+	shift_msg(&msg, i);
 	net_send_msg(fd, &msg);
       }
     }

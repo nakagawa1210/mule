@@ -45,7 +45,7 @@ int recv_msg(int fd,
   msg[data_num] = rmsg;
   data_num++;
   
-  return 0;
+  return rmsg.hdr.ws;
 }
 
 int recv_n_msg (int fd,
@@ -107,10 +107,13 @@ void recv_msgs(char *host, int count, int data_size, uint32_t win_size, int port
   recv_n_msg(fd, WS_1, saddr, daddr);
   recv_count += WS_1;
   
+  net_send_msg(fd, &ws_msg);
+
   while(recv_count + win_size < count){
-    net_send_msg(fd, &ws_msg);
-    recv_n_msg(fd, win_size, saddr, daddr);
-    recv_count += win_size;
+    if(recv_msg(fd, saddr, daddr) == 1){
+      net_send_msg(fd, &ws_msg);
+      recv_count += win_size;
+    }
   }
   
   msg_fill(&ws_msg, RECV_N_REQ, count - recv_count, saddr, daddr, payload, sizeof(payload));
