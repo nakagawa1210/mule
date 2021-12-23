@@ -122,12 +122,20 @@ void send_msgs (char *host, int count, int len, uint32_t win_size, int port_num)
   uint32_t saddr = 100;
   uint32_t daddr = 200;
   uint32_t ws;
+
   struct message msg_ack;
   int send_count = 0;
 
-  send_msg_ack(fd, saddr, daddr, payload);
-  net_recv_msg(fd, &msg_ack);
-
+  //hello_req
+  struct message hello_req_msg;
+  struct message hello_ack_msg;
+  
+  msg_fill(&hello_req_msg, HELLO_REQ, 1, saddr, daddr, payload, sizeof(payload));
+  
+  net_send_msg(fd, &hello_req_msg);
+  net_recv_msg(fd, &hello_ack_msg);
+  //end_hello_req
+  
   //ws = msg_ack.hdr.ws;
   ws = win_size;
   

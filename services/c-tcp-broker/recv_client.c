@@ -94,25 +94,31 @@ void recv_msgs(char *host, int count, int data_size, uint32_t win_size, int port
   char payload[MSG_PAYLOAD_LEN] = "Hello";
   uint32_t saddr = 200;
   uint32_t daddr = 100;
-  struct message ws_1_msg;
+ 
   struct message ws_msg;
   struct message ack_msg;
   int recv_count = 0;
   
-  msg_fill(&ws_1_msg, RECV_N_REQ, WS_1, saddr, daddr, payload, sizeof(payload));
   msg_fill(&ws_msg, RECV_N_REQ, win_size, saddr, daddr, payload, sizeof(payload));
   msg_fill(&ack_msg, RECV_ACK, WS_1, saddr, daddr, payload, sizeof(payload));
 
-  net_send_msg(fd, &ws_1_msg);
-  recv_n_msg(fd, WS_1, saddr, daddr);
-  recv_count += WS_1;
-  
-  net_send_msg(fd, &ws_msg);
+  //hello_req
+  struct message hello_req_msg;
+  struct message hello_ack_msg;
 
+  msg_fill(&hello_req_msg, HELLO_REQ, WS_1, saddr, daddr, payload, sizeof(payload));
+
+  net_send_msg(fd, &hello_req_msg);
+  net_recv_msg(fd, &hello_ack_msg);
+  //end_hello_req
+  
   while(recv_count + win_size < count){
-    if(recv_msg(fd, saddr, daddr) == 1){
-      net_send_msg(fd, &ws_msg);
-      recv_count += win_size;
+    net_send_msg(fd, &ws_msg);
+    while(1){
+      if(recv_msg(fd, saddr, daddr) == 1){
+	recv_count += win_size;
+	break;
+      }
     }
   }
   

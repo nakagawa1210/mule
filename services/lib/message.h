@@ -42,6 +42,9 @@ struct message_ack {
 #define RECV_MSG 4      // server -> receiver (+payload)
 #define RECV_ACK 6      // receiver -> server
 
+#define HELLO_REQ 7     // client -> server
+#define HELLO_ACK 8     // server -> client
+
 
 #define SENDER_SEND 1
 #define SERVER_RECV 2

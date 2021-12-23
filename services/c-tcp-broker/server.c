@@ -143,6 +143,9 @@ void *loop (void* pArg){
 	printf("%d,%d\n",i,msg_len[i]);
       }
       break;
+    case HELLO_REQ:
+      net_send_ack(fd, &msg.payload, HELLO_ACK, msg.hdr.ws, msg.hdr.saddr, msg.hdr.daddr);
+      break;
     default:break;
     }
   }
