@@ -1,28 +1,78 @@
-require 'fiddle/import'
+require "socket"
 
 MSG_PAYLOAD_LEN = 1024
-MSG_TOTAL_LEN = M::Message.size
+MSG_HEADER_LEN = 4 + 4 + 4 + 4 + 4 + 8 + 8 + 8 + 8 
+MSG_TOTAL_LEN = MSG_PAYLOAD_LEN + MSG_HEADER_LEN
 
-module M
-  extend Fiddle::Importer
-  dlload "libc.so.6"
-  extern "int gettimeofday(void*, void*)"
-  Messeage = struct(["uint tot_len",
-                     "uint msg_type", 
-                     "uint ws",
-                     "uint saddr",
-                     "uint daddr",
-                     "uint64_t sender_send_time",
-                     "uint64_t server_recv_time",
-                     "uint64_t server_send_time",
-                     "uint64_t recver_recv_time",
-                     "char[MSG_PAYLOAD_LEN] payload"])
+
+Message = Struct.new(:tot_len,
+                     :msg_type, 
+                     :ws,
+                     :saddr,
+                     :daddr,
+                     :sender_send_time,
+                     :server_recv_time,
+                     :server_send_time,
+                     :recver_recv_time,
+                     :payload)
+
+SEND_MSG = 1      # sender -> server (+payload)
+SEND_MSG_ACK = 2  # sender -> server (+payload) then sender wait ack 
+SEND_ACK = 3      # server -> sender
+
+RECV_N_REQ = 3    # receiver -> server
+RECV_MSG = 4      # server -> receiver (+payload)
+RECV_ACK = 6      # receiver -> server
+
+HELLO_REQ = 7     # client -> server
+HELLO_ACK = 8     # server -> client
+
+
+SENDER_SEND = 1
+SERVER_RECV = 2
+SERVER_SEND = 3
+RECVER_RECV = 4
+
+def msg_fill(msg_type, ws, saddr, daddr, payload)
+  msg = Message.new(MSG_TOTAL_LEN,
+                    msg_type,
+                    ws,
+                    saddr,
+                    daddr,
+                    0,
+                    0,
+                    0,
+                    0,
+                    payload)
 end
 
-def main
-  send_data = M::Messeage.malloc
-  p send_data.tot_len = MSG_PAYLOAD_LEN
-  p send_data
+def msg_assign_time_stamp(msg, time_stamp, where)
+  case where
+  when SENDER_SEND then
+    msg.sender_send_time = time_stamp
+  when SERVER_RECV then
+    msg.server_recv_time = time_stamp
+  when SERVER_SEND then
+    msg.server_send_time = time_stamp
+  when RECVER_RECV then
+    msg.recver_recv_time = time_stamp
+  end
 end
 
-main
+def msg_pack(msg)
+  data = [msg.tot_len,
+          msg.msg_type, 
+          msg.ws,
+          msg.saddr,
+          msg.daddr,
+          msg.sender_send_time,
+          msg.server_recv_time,
+          msg.server_send_time,
+          msg.recver_recv_time,
+          msg.payload].pack("I!5Q!4a1024")
+end
+
+def msg_unpack(data)
+  msg = Message.new
+  msg = data.unpack("I!5Q!4a1024")
+end

@@ -1,3 +1,5 @@
+require "../lib/message.rb"
+require "../lib/network.rb"
 require "socket"
 
 class MsgServer < TCPServer
@@ -106,6 +108,10 @@ class MsgServer < TCPServer
   end
 end 
 
+def treat_client(s)
+  net_recv
+case 
+end
 
 def main ()
   if ARGV.size > 0
@@ -143,21 +149,13 @@ def main ()
   
   while true
     Thread.start(gs.accept) do |s|
-      loop do
-        s.gets
-        res = stub.analyze($_,s, count, data_size, window_size)
-        break if res
-      end
-      s.close
-      if res == 5
-        puts "s_lock_start,s_lock_end,shift_end,spin_start,r_lock_start,r_lock_end,push_end,send_lock = #{$send_lock} recv_lock = #{$recv_lock}"
-        $recv_lock_time.length.times do |n|
-          puts "#{$send_lock_time[n][0]},#{$send_lock_time[n][1]},#{$send_lock_time[n][2]},#{$recv_lock_time[n][0]},#{$recv_lock_time[n][1]},#{$recv_lock_time[n][2]},#{$recv_lock_time[n][3]}"
-        end
-      end
+      treat_client(s)
     end
   end
 end
 
 main
 
+puts "s_lock_start,s_lock_end,shift_end,spin_start,r_lock_start,r_lock_end,push_end,send_lock = #{$send_lock} recv_lock = #{$recv_lock}"
+$recv_lock_time.length.times do |n|
+  puts "#{$send_lock_time[n][0]},#{$send_lock_time[n][1]},#{$send_lock_time[n][2]},#{$recv_lock_time[n][0]},#{$recv_lock_time[n][1]},#{$recv_lock_time[n][2]},#{$recv_lock_time[n][3]}"
