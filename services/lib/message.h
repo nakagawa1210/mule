@@ -9,6 +9,18 @@
 struct message_header {
   uint32_t tot_len;  // total length including payload
   uint32_t msg_type; // RECV_N_REQUEST, SEND_N_REQUEST
+  uint32_t fragments;  //fragments
+  uint32_t saddr; //source address
+  uint32_t daddr; //destination address
+  uint64_t sender_send_time;
+  uint64_t server_recv_time;
+  uint64_t server_send_time;
+  uint64_t recver_recv_time;
+};
+
+struct ack_header {
+  uint32_t tot_len;  // total length including payload
+  uint32_t msg_type; // RECV_N_REQUEST, SEND_N_REQUEST
   uint32_t ws;  //window size
   uint32_t saddr; //source address
   uint32_t daddr; //destination address
@@ -23,14 +35,9 @@ struct message {
   struct message_header hdr;
   char payload[MSG_PAYLOAD_LEN];
 };
-   
-struct ack_header {
-  uint32_t msg_type;
-  uint32_t ack_ok;
-};
 
-struct message_ack {
-  struct message_header hdr;
+struct ack_message {
+  struct ack_header hdr;
   char payload[MSG_PAYLOAD_LEN];
 };
 
@@ -60,6 +67,14 @@ struct message *msg_fill_hdr(struct message *msg,
 struct message *msg_fill(struct message *msg,
                          uint32_t msg_type,
 			 uint32_t ws,
+                         uint32_t saddr,
+                         uint32_t daddr,
+                         void *payload,
+                         int payload_len);
+
+struct ack_message *ack_fill(struct ack_message *msg,
+                         uint32_t msg_type,
+			 uint32_t fragments,
                          uint32_t saddr,
                          uint32_t daddr,
                          void *payload,

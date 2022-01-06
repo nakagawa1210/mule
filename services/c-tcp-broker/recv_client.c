@@ -33,6 +33,19 @@ unsigned long int gettsc()
   return (unsigned long int)tsc_u<<32 | tsc_l;
 }
 
+int send_ack(int fd,
+	     uint32_t msg_type,
+	     uint32_t ws,
+	     uint32_t saddr,
+	     uint32_t daddr
+	     ){
+  char payload[MSG_PAYLOAD_LEN] = "Hello";
+
+  int n = net_send_ack(fd, payload, msg_type, ws, saddr, daddr);
+  
+  return n;
+}
+
 int recv_msg(int fd,
 	     uint32_t saddr,
 	     uint32_t daddr){
@@ -45,7 +58,7 @@ int recv_msg(int fd,
   msg[data_num] = rmsg;
   data_num++;
   
-  return rmsg.hdr.ws;
+  return rmsg.hdr.fragments;
 }
 
 int recv_n_msg (int fd,
@@ -95,25 +108,14 @@ void recv_msgs(char *host, int count, int data_size, uint32_t win_size, int port
   uint32_t saddr = 200;
   uint32_t daddr = 100;
  
-  struct message ws_msg;
-  struct message ack_msg;
+  struct ack_message ws_msg;
+  struct ack_message ack_msg;
   int recv_count = 0;
   
-  msg_fill(&ws_msg, RECV_N_REQ, win_size, saddr, daddr, payload, sizeof(payload));
-  msg_fill(&ack_msg, RECV_ACK, WS_1, saddr, daddr, payload, sizeof(payload));
-
-  //hello_req
-  struct message hello_req_msg;
-  struct message hello_ack_msg;
-
-  msg_fill(&hello_req_msg, HELLO_REQ, WS_1, saddr, daddr, payload, sizeof(payload));
-
-  net_send_msg(fd, &hello_req_msg);
-  net_recv_msg(fd, &hello_ack_msg);
-  //end_hello_req
+  net_hello_req(fd, saddr, daddr);
   
   while(recv_count + win_size < count){
-    net_send_msg(fd, &ws_msg);
+    send_ack(fd, RECV_N_REQ, win_size, saddr, daddr);
     while(1){
       if(recv_msg(fd, saddr, daddr) == 1){
 	recv_count += win_size;
@@ -121,12 +123,9 @@ void recv_msgs(char *host, int count, int data_size, uint32_t win_size, int port
       }
     }
   }
-  
-  msg_fill(&ws_msg, RECV_N_REQ, count - recv_count, saddr, daddr, payload, sizeof(payload));
-
-  net_send_msg(fd, &ws_msg);
+  send_ack(fd, RECV_N_REQ, count - recv_count, saddr, daddr);
   recv_n_msg(fd, count - recv_count, saddr, daddr);
-  net_send_msg(fd, &ack_msg);
+  send_ack(fd, RECV_ACK, WS_1, saddr, daddr);
 
   if (close(fd) == -1) {
     printf("%d\n", errno);

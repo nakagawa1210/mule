@@ -108,16 +108,21 @@ int net_create_service(const char *host, const char *service){
 //
 // You can leave msg NULL if no need the content.
 
-int net_recv_ack(int fd, struct message *msg, int expected_msg_type, int expected_orig_msg_id){
-  struct message tmp_msg;
+int net_recv_ack(int fd, struct ack_message *msg, int expected_msg_type){
+  struct ack_message tmp_msg;
 
-  if (!msg)
-    msg = &tmp_msg;
+  if (!msg) msg = &tmp_msg;
 
-  int n = net_recv_msg(fd, msg);
+  int n = receive_fixed_length(fd, msg, MSG_TOTAL_LEN);
+
   int id = *((int*)msg->payload);
-
-  if ((msg->hdr.msg_type != expected_msg_type) || (id != expected_orig_msg_id)) {
+  
+  if (n != 0 && n != MSG_TOTAL_LEN) {
+    //logger_error("message size (%d) != MS_TOTAL_LEN (%ld) FD(%d)\n", n, MSG_TOTAL_LEN, fd);
+    return -1;
+  }
+  
+  if (msg->hdr.msg_type != expected_msg_type) {
     /*logger_error("invalid ack: expected %s for id %d, received %s for id %d\n",
                  msg_type_to_string(expected_msg_type),
                  expected_orig_msg_id,
@@ -145,6 +150,7 @@ int net_recv_msg(int fd, struct message *msg){
 
   if (n != 0 && n != MSG_TOTAL_LEN) {
     //logger_error("message size (%d) != MS_TOTAL_LEN (%ld) FD(%d)\n", n, MSG_TOTAL_LEN, fd);
+    return -1;
   }
   //logger_trace(""); msg_fdump(logger_fp(LOG_TRACE), msg);
   return n;
@@ -156,10 +162,10 @@ int net_recv_msg(int fd, struct message *msg){
 //   otherwise: failure
 
 int net_send_ack(int fd, void *payload, uint32_t msg_type, uint32_t ws, uint32_t saddr, uint32_t daddr){
-  struct message msg;
+  struct ack_message msg;
 
-  msg_fill(&msg, msg_type, ws, saddr, daddr, payload, sizeof(payload));
-  return net_send_msg(fd, &msg);
+  ack_fill(&msg, msg_type, ws, saddr, daddr, payload, sizeof(payload));
+  return send(fd, &msg, MSG_TOTAL_LEN, 0);
 }
 
 // Send message via FD.
@@ -182,5 +188,17 @@ int net_send_msg(int fd, struct message *msg){
   }
 
   //logger_trace(""); msg_fdump(logger_fp(LOG_TRACE), msg);
+  return n;
+}
+int net_hello_req(int fd, uint32_t saddr, uint32_t daddr){
+  char payload[MSG_PAYLOAD_LEN] = "Hello";
+  struct message hello_req_msg;
+  struct ack_message hello_ack_msg;
+  
+  msg_fill(&hello_req_msg, HELLO_REQ, 1, saddr, daddr, payload, sizeof(payload));
+  
+  net_send_msg(fd, &hello_req_msg);
+  int n = net_recv_ack(fd, &hello_ack_msg, HELLO_ACK);
+
   return n;
 }

@@ -105,7 +105,7 @@ int shift_msg(struct message *msg, uint32_t ws){
   *msg = msg_ary[recv_num];
   recv_num++;
   msg->hdr.msg_type = RECV_MSG;
-  msg->hdr.ws = ws;
+  msg->hdr.fragments = ws;
   log_tsc = gettsc();
   msg_assign_time_stamp(msg, log_tsc, SERVER_SEND);
   return 0;
@@ -123,15 +123,16 @@ void *loop (void* pArg){
     switch(msg.hdr.msg_type) {
     case SEND_MSG:
       store_msg(&msg);
-      if(msg.hdr.ws == 1){
-	net_send_ack(fd, &msg.payload, SEND_ACK, msg.hdr.ws, msg.hdr.saddr, msg.hdr.daddr);
+      if(msg.hdr.fragments == 1){
+	uint32_t ws = msg.hdr.fragments;
+	net_send_ack(fd, &msg.payload, SEND_ACK, ws, msg.hdr.saddr, msg.hdr.daddr);
       }
       break;
     case SEND_MSG_ACK:
-      net_send_ack(fd, &msg.payload, SEND_ACK, msg.hdr.ws, msg.hdr.saddr, msg.hdr.daddr);
+      net_send_ack(fd, &msg.payload, SEND_ACK, msg.hdr.fragments, msg.hdr.saddr, msg.hdr.daddr);
       break;
     case RECV_N_REQ:{
-      int ws = msg.hdr.ws;
+      int ws = msg.hdr.fragments;
       for(int i = ws; i > 0; i--){
 	shift_msg(&msg, i);
 	net_send_msg(fd, &msg);
@@ -144,7 +145,7 @@ void *loop (void* pArg){
       }
       break;
     case HELLO_REQ:
-      net_send_ack(fd, &msg.payload, HELLO_ACK, msg.hdr.ws, msg.hdr.saddr, msg.hdr.daddr);
+      net_send_ack(fd, &msg.payload, HELLO_ACK, msg.hdr.fragments, msg.hdr.saddr, msg.hdr.daddr);
       break;
     default:break;
     }

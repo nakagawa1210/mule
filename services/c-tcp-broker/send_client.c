@@ -31,26 +31,14 @@ unsigned long int gettsc(){
   return (unsigned long int)tsc_u<<32 | tsc_l;
 }
 
-int send_n_request (int fd,
-		    uint32_t n,
-		    uint32_t saddr,
-		    uint32_t daddr,
-		    void *payload){
-  struct message smsg;
-  uint64_t log_tsc;
-  
-  for (int i = 0; i < n; i++){
-    if(i == n-1){
-      msg_fill(&smsg,SEND_MSG_ACK, n, saddr, daddr, payload,sizeof(payload));
-    }else{
-      msg_fill(&smsg, SEND_MSG, n, saddr, daddr, payload, sizeof(payload));
-    }
-    log_tsc = gettsc();
-    msg_assign_time_stamp(&smsg, log_tsc, SENDER_SEND);
-    net_send_msg(fd, &smsg);
-  }
-  return 0;
+int recv_msg(int fd){
+  struct ack_message msg_ack;
+
+  net_recv_ack(fd, &msg_ack, SEND_ACK);
+
+  return msg_ack.hdr.ws;
 }
+  
 
 int send_msg (int fd,
 	      uint32_t n,
@@ -62,18 +50,6 @@ int send_msg (int fd,
   msg_fill(&smsg,SEND_MSG, n, saddr, daddr, payload,sizeof(payload));
   log_tsc = gettsc();
   msg_assign_time_stamp(&smsg, log_tsc, SENDER_SEND);
-  net_send_msg(fd, &smsg);
-  
-  return 0;
-}
-
-int send_msg_ack (int fd,
-		  uint32_t saddr,
-		  uint32_t daddr,
-		  void *payload){
-  struct message smsg;
-  uint64_t log_tsc;
-  msg_fill(&smsg,SEND_MSG_ACK, WS_1, saddr, daddr, payload,sizeof(payload));
   net_send_msg(fd, &smsg);
   
   return 0;
@@ -122,35 +98,27 @@ void send_msgs (char *host, int count, int len, uint32_t win_size, int port_num)
   uint32_t saddr = 100;
   uint32_t daddr = 200;
   uint32_t ws;
+  uint32_t next_ws;
 
-  struct message msg_ack;
   int send_count = 0;
 
-  //hello_req
-  struct message hello_req_msg;
-  struct message hello_ack_msg;
+  net_hello_req(fd, saddr, daddr);
   
-  msg_fill(&hello_req_msg, HELLO_REQ, 1, saddr, daddr, payload, sizeof(payload));
-  
-  net_send_msg(fd, &hello_req_msg);
-  net_recv_msg(fd, &hello_ack_msg);
-  //end_hello_req
-  
-  //ws = msg_ack.hdr.ws;
-  ws = win_size;
+  ws = WS_1;
   
   while(send_count + ws < count){
     for (uint32_t i = ws; i > 0; i--) {
       send_msg(fd, i, saddr, daddr, payload);
     }
-    net_recv_msg(fd, &msg_ack);
+    next_ws = recv_msg(fd);
     send_count += ws;
-    //ws = msg_ack.hdr.ws;
+    //ws = next_ws;
+    ws = win_size;
   }
   for (uint32_t i = (count - send_count); i > 0; i--){
     send_msg(fd, i, saddr, daddr, payload);
   }
-  net_recv_msg(fd, &msg_ack);
+  recv_msg(fd);
   
   //end_sendmessages
   
