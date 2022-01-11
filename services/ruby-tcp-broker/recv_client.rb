@@ -1,4 +1,69 @@
+require "../lib/message.rb"
+require "../lib/network.rb"
 require 'socket'
+
+MAX_COUNT = 100000
+WS_1 = 1
+
+$msg_ary = Array.new(MAX_COUNT)
+$data_num = 0
+
+def send_ack(s, msg_type, ws, saddr, daddr)
+  payload = "Hello"
+  n = net_send_ack(s, payload, msg_type, ws, saddr, daddr)
+end
+
+def recv_msg(s, saddr, daddr)
+  msg = Message.new
+  net_recv_msg(s, msg)
+  time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  msg_assign_time_stamp(msg, time, RECVER_RECV)
+  $msg_ary[$data_num] = msg
+  $data_num += 1
+  
+  return msg.fragments
+end
+
+def recv_n_msg(s, n, saddr, daddr)
+  n.times do
+    recv_msg(s, saddr, daddr)
+  end
+end
+
+def print_timestamp()
+  puts "num,send,svr_in,svr_out,recv" 
+  $data_num.times do |num|
+    puts "#{$msg_ary[num].sender_send_time},#{$msg_ary[num].server_recv_time},#{$msg_ary[num].server_send_time},#{$msg_ary[num].recver_recv_time}"
+  end
+end
+
+def recv_msgs(count, data_size, win_size, port_num)
+  s = TCPSocket.open("localhost", port_num)
+  s.setsockopt(Socket::IPPROTO_TCP,Socket::TCP_NODELAY,true)
+
+  payload = "Hello"
+  saddr = 200
+  daddr = 100
+
+  recv_count = 0
+
+  net_hello_req(s, saddr, daddr)
+  
+  while(recv_count + win_size < count) do
+    send_ack(s, RECV_N_REQ, win_size, saddr, daddr)
+    loop do
+      if(recv_msg(s, saddr, daddr) == 1)
+	recv_count += win_size
+	break
+      end
+    end
+  end
+  send_ack(s, RECV_N_REQ, count - recv_count, saddr, daddr)
+  recv_n_msg(s, count - recv_count, saddr, daddr)
+  send_ack(s, RECV_ACK, WS_1, saddr, daddr)
+  
+  s.close
+end
 
 def main
   if ARGV.size > 0
@@ -18,74 +83,23 @@ def main
   end
   
   if ARGV.size > 2
-    window_size = ARGV[2].to_i
+    win_size = ARGV[2].to_i
   else
     file = File.basename(__FILE__)
     STDERR.printf("%s argument error window_size\n", file)
     exit
   end
-  
-  port = 50052
-  s = TCPSocket.open("localhost", port)
-  s.setsockopt(Socket::IPPROTO_TCP,Socket::TCP_NODELAY,true)
-  
-  length = 1
-  command = 2
-  dest = 3
-  msgid = 4
 
-  iddata = command.to_s << '/' << length.to_s << '/' << dest.to_s << '/' << msgid.to_s 
-
-  recvdata = []
-
-  loop_count = count / window_size
-
-  loop_count.times do
-    s.write(iddata + "\n")
-  
-    window_size.times do
-      s.gets
-      
-      time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      data = $_.chomp
-      data << ',' << time.to_s
-    
-      recvdata.push data
-    end
+  if ARGV.size > 3
+    port_num = ARGV[3].to_i
+  else
+    file = File.basename(__FILE__)
+    STDERR.printf("%s argument error port_num\n", file)
+    exit
   end
-
-  s.write("5\n")
-  s.close
   
-  puts "num,send,svr_in,svr_out,recv" 
-  recvdata.each do |data|
-    buf = data.partition("/")
-    command = buf[0]
-    data = buf[2]
-    buf = data.partition("/")
-    length = buf[0]
-    data = buf[2]
-    buf = data.partition("/")
-    dest = buf[0]
-    data = buf[2]
-    buf = data.partition(",")
-    message = buf[0]
-    data = buf[2]
-    
-    buf = data.rpartition(",")
-    t_4 = buf[2]
-    data = buf[0]
-    buf = data.rpartition(",")
-    t_3 = buf[2]
-    data = buf[0]
-    buf = data.rpartition(",")
-    t_2 = buf[2]
-    data = buf[0]
-    buf = data.rpartition(",")    
-    t_1 = buf[2]
-    data = buf[0]
-    puts "#{dest},#{t_1},#{t_2},#{t_3},#{t_4}"
-  end
+  recv_msgs(count, data_size, win_size, port_num)
+  print_timestamp()
 end
 
 main

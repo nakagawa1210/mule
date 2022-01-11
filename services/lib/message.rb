@@ -7,6 +7,17 @@ MSG_TOTAL_LEN = MSG_PAYLOAD_LEN + MSG_HEADER_LEN
 
 Message = Struct.new(:tot_len,
                      :msg_type, 
+                     :fragments,
+                     :saddr,
+                     :daddr,
+                     :sender_send_time,
+                     :server_recv_time,
+                     :server_send_time,
+                     :recver_recv_time,
+                     :payload)
+
+Ack_Message = Struct.new(:tot_len,
+                     :msg_type, 
                      :ws,
                      :saddr,
                      :daddr,
@@ -33,17 +44,50 @@ SERVER_RECV = 2
 SERVER_SEND = 3
 RECVER_RECV = 4
 
-def msg_fill(msg_type, ws, saddr, daddr, payload)
-  msg = Message.new(MSG_TOTAL_LEN,
-                    msg_type,
-                    ws,
-                    saddr,
-                    daddr,
-                    0,
-                    0,
-                    0,
-                    0,
-                    payload)
+def msg_fill_hdr(msg, msg_type, fragments, saddr, daddr)  
+  msg.tot_len = MSG_TOTAL_LEN
+  msg.msg_type = msg_type
+  msg.fragments = fragments
+  msg.saddr = saddr
+  msg.daddr = daddr
+
+  msg.sender_send_time ||= 0.0
+  msg.server_recv_time ||= 0.0
+  msg.server_send_time ||= 0.0
+  msg.recver_recv_time ||= 0.0
+
+  return msg
+end
+
+def msg_fill_ack_hdr(msg, msg_type, ws, saddr, daddr)  
+  msg.tot_len = MSG_TOTAL_LEN
+  msg.msg_type = msg_type
+  msg.ws = ws
+  msg.saddr = saddr
+  msg.daddr = daddr
+
+  msg.sender_send_time ||= 0.0
+  msg.server_recv_time ||= 0.0
+  msg.server_send_time ||= 0.0
+  msg.recver_recv_time ||= 0.0
+
+  return msg
+end
+
+def msg_fill(msg, msg_type, fragments, saddr, daddr, payload)
+  msg_fill_hdr(msg, msg_type, fragments, saddr, daddr)
+  
+  msg.payload = (payload.length < MSG_PAYLOAD_LEN) ? payload : payload.slice(0, MSG_PAYLOAD_LEN)
+  
+  return msg
+end
+
+def ack_fill(msg, msg_type, ws, saddr, daddr, payload)
+  msg_fill_ack_hdr(msg, msg_type, ws, saddr, daddr)
+  
+  msg.payload = payload.length < MSG_PAYLOAD_LEN ? payload : payload.slice(0, MSG_PAYLOAD_LEN)
+  
+  return msg
 end
 
 def msg_assign_time_stamp(msg, time_stamp, where)
@@ -62,6 +106,19 @@ end
 def msg_pack(msg)
   data = [msg.tot_len,
           msg.msg_type, 
+          msg.fragments,
+          msg.saddr,
+          msg.daddr,
+          msg.sender_send_time,
+          msg.server_recv_time,
+          msg.server_send_time,
+          msg.recver_recv_time,
+          msg.payload].pack("I!5Q!4a1024")
+end
+
+def ack_pack(msg)
+  data = [msg.tot_len,
+          msg.msg_type, 
           msg.ws,
           msg.saddr,
           msg.daddr,
@@ -74,5 +131,10 @@ end
 
 def msg_unpack(data)
   msg = Message.new
+  msg = data.unpack("I!5Q!4a1024")
+end
+
+def ack_unpack(data)
+  msg = Ack_Message.new
   msg = data.unpack("I!5Q!4a1024")
 end
