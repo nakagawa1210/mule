@@ -113,7 +113,7 @@ def msg_pack(msg)
           msg.server_recv_time,
           msg.server_send_time,
           msg.recver_recv_time,
-          msg.payload].pack("I!5Q!4a1024")
+          msg.payload].pack("I!5G4a1024")
 end
 
 def ack_pack(msg)
@@ -126,15 +126,15 @@ def ack_pack(msg)
           msg.server_recv_time,
           msg.server_send_time,
           msg.recver_recv_time,
-          msg.payload].pack("I!5Q!4a1024")
+          msg.payload].pack("I!5G4a1024")
 end
 
 def msg_unpack(data)
   msg = Message.new
-  msg = data.unpack("I!5Q!4a1024")
+  msg = data.unpack("I!5G4a1024")
 end
 
 def ack_unpack(data)
   msg = Ack_Message.new
-  msg = data.unpack("I!5Q!4a1024")
+  msg = data.unpack("I!5G4a1024")
 end

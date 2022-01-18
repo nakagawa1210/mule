@@ -10,9 +10,9 @@ def recv_msg(s)
   ws = msg.ws
 end
 
-def send_msg(s, ws, saddr, daddr, payload)
+def send_msg(s, fragments, saddr, daddr, payload)
   msg = Message.new
-  msg = msg_fill(msg, SEND_MSG, ws, saddr, daddr, payload)
+  msg = msg_fill(msg, SEND_MSG, fragments, saddr, daddr, payload)
   time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   msg_assign_time_stamp(msg, time, SENDER_SEND)
   net_send_msg(s, msg)
@@ -26,7 +26,6 @@ def send_msgs(host, count, data_size, win_size, port_num)
   payload = "Hello"
   saddr = 100
   daddr = 200
-  ws = WS_1
   next_ws = WS_1
   
   send_count = 0
@@ -36,7 +35,7 @@ def send_msgs(host, count, data_size, win_size, port_num)
   ws = WS_1
 
   while (send_count + ws) < count do
-    for i in ws..1 do
+    ws.downto(1) do |i|
       send_msg(s, i, saddr, daddr, payload)
     end
     next_ws = recv_msg(s)
@@ -45,7 +44,8 @@ def send_msgs(host, count, data_size, win_size, port_num)
     ws = win_size
   end
 
-  for i in (count - send_count)..1 do
+  left_count = count - send_count
+  left_count.downto(1) do |i|
     send_msg(s, i, saddr, daddr, payload)
   end
   recv_msg(s)

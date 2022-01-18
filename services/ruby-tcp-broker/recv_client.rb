@@ -26,7 +26,7 @@ end
 
 def recv_n_msg(s, n, saddr, daddr)
   n.times do
-    recv_msg(s, saddr, daddr)
+    p recv_msg(s, saddr, daddr)
   end
 end
 
@@ -49,17 +49,21 @@ def recv_msgs(count, data_size, win_size, port_num)
 
   net_hello_req(s, saddr, daddr)
   
-  while(recv_count + win_size < count) do
+  while(recv_count + win_size) < count do
     send_ack(s, RECV_N_REQ, win_size, saddr, daddr)
     loop do
-      if(recv_msg(s, saddr, daddr) == 1)
+      fragments = recv_msg(s, saddr, daddr)
+      if(fragments == 1)
 	recv_count += win_size
 	break
       end
     end
   end
   send_ack(s, RECV_N_REQ, count - recv_count, saddr, daddr)
-  recv_n_msg(s, count - recv_count, saddr, daddr)
+  left_count = count - recv_count
+  left_count.times do 
+    p recv_msg(s, saddr, daddr)
+  end
   send_ack(s, RECV_ACK, WS_1, saddr, daddr)
   
   s.close

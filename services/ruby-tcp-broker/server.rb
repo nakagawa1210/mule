@@ -17,24 +17,25 @@ def store_msg(msg)
   $data_num += 1
 end
 
-def shift_msg(msg, ws)
+def shift_msg(msg, fragments)
   spin_count = 0
   while $recv_num >= $data_num do
     spin_count += 1
   end
 
-  $msg_len[$recv_num] = $data_num - $recv_num
+  $msg_len[$recv_num] = spin_count
   
   msg = $msg_ary[$recv_num]
   $recv_num += 1
   msg.msg_type = RECV_MSG
-  msg.fragments = ws
+  msg.fragments = fragments
   time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   msg_assign_time_stamp(msg, time, SERVER_SEND)
-  return 0
+  return msg
 end
 
-def treat_client(s)
+def treat_client(gs)
+  s = gs
   msg = Message.new
   
   loop do
@@ -43,26 +44,31 @@ def treat_client(s)
     case msg.msg_type
     when SEND_MSG then
       store_msg(msg)
+      msg.fragments
       if msg.fragments == 1
         ws = msg.fragments
-        net_send_ack(s, msg.payload, SEND_ACK, msg.fragments, msg.saddr, msg.daddr)
+        net_send_ack(s, msg.payload, SEND_ACK, ws, msg.saddr, msg.daddr)
       end
     when SEND_MSG_ACK then
     when RECV_N_REQ then
       ws = msg.fragments
-      for i in ws..1 do
-        shift_msg(msg, i)
-        net_send_msg(s, msg)
+      ws.downto(1) do |i|
+        p i
+        smsg = shift_msg(msg, i)
+        net_send_msg(s, smsg)
       end
     when RECV_ACK then
       $recv_num.times do |num|
-        puts "#{num},#{$msg_len[num]}"
+        #puts "#{num},#{$msg_len[num]}"
       end
+      p $data_num
+      p $recv_num
     when HELLO_REQ then
       net_send_ack(s, msg.payload, HELLO_ACK, msg.fragments, msg.saddr, msg.daddr)
     else false
     end
   end
+  p "end treat"
 end
 
 def main ()
@@ -79,13 +85,12 @@ def main ()
   addr = gs.addr
   addr.shift
   
- # stub = MsgServer.new()
-
   res = 0
   
   while true
     Thread.start(gs.accept) do |s|
       treat_client(s)
+      s.close
     end
   end
 end
