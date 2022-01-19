@@ -1,7 +1,7 @@
 #+TITLE: メッセージブローカの引数と使用方法
 #+AUTHOR: 中川 雄介
 #+EMAIL: nakagawa2020@s.okayama-u.ac.jp
-#+DATE: 2021-08-03
+#+DATE: 2022-01-19
 #+OPTIONS: H:3 num:1 toc:nil
 #+OPTIONS: ^:nil @:t \n:nil ::t |:t f:t TeX:t
 #+OPTIONS: skip:nil
@@ -32,47 +32,33 @@
 
 ** send_client
 *** 書式
-    : send_client [COUNT] [DATA_SIZE] [WINDOW_SIZE]
+    : send_client [COUNT] [DATA_SIZE] [WINDOW_SIZE] [PORT_NUMBER]
 *** 説明
     *COUNT* でメッセージ送信回数を指定し，
     *DATA_SIZE* で一つのメッセージで送るデータのサイズを指定する．
     *WINDOW_SIZE* で指定された回数メッセージを受け取る毎に応答メッセージを送信する．
+    *PORT_NUMBER* で指定したポートで通信を行う．
 *** 使用例
-    1) データサイズ１KB，WS100でメッセージを 1000個送信．
-       : send_client 1000 1 100
+    1) ポート10005，データサイズ１KB，WS100でメッセージを 1000個送信．
+       : send_client 1000 1 100 10005
 
 ** recv_client
 *** 書式
-    : m-receiver [-b BROKER:PORT] [-c MSGS] [-d LEVEL] [-l LOG-FILE] [-p PID-FILE] [-u MYID]
+    : recv_client [COUNT] [DATA_SIZE] [WINDOW_SIZE] [PORT_NUMBER]
 *** 説明
     メッセージを受信して記録．
-*** オプション
-    以下，m-sender との相異点:
-    + =-c MSGS= :: MSGS個のメッセージを受信したら終了 (default: 1000)．
-    + =-u MYID= :: 自身のIDを表す0以上の整数 (default: 0)．他のセンダやレシーバと異なるように指定．
 *** 使用例
-    1) localhost:8888 で動作中のブローカに接続し，メッセージを 1000個受信したら終了．
-       : m-receiver -b localhost:8888 -c 1000
-    2) localhost:3000 で動作中のブローカに接続し，メッセージ受信し続ける．自身の ID は 9999 とする．
-       : m-receiver -u 9999
+    1) ポート10005，データサイズ１KB，WS100でメッセージを 1000個受信．
+       : recv_client 1000 1 100 10005
 
 ** server
 *** 書式
-    : m-broker [-b BROKER:PORT] [-c MSGS] [-d LEVEL] [-l LOG-FILE] [-p PID-FILE] [-u MYID]
+    : server [PORT_NUMBER]
 *** 説明
     ブローカーを起動して *PORT* で待ち受ける．
-*** オプション
-    以下，m-sender との相異点:
-    + =-b PORT= :: bind するポート BROKER には localhost など，自身を表すアドレスを指定する．(default: 5000)．
-    + =-c MSGS= :: 無視します
-    + =-u MYID= :: 自身のIDを表す0以上の整数 (default: 50000)．他のセンダやレシーバと異なるように指定する．
-      ブローカの MYID に対してメッセージを送信することでセンダのテストが可能．
 *** 使用例
-    1) 8888 ポートででブローカを起動する．メッセージを 1000個処理したら終了．
-       : m-broker -b 8888 -c 1000
-    2) デフォルトポートででブローカを起動し，メッセージを処理し続ける．自身の ID は 80000 とする．
-       : m-broker -u 80000
-
+    1) 10005 ポートでサーバを起動する．
+       : server 10005
 
 * メッセージ (パケット)
 ** フォーマット
@@ -84,40 +70,62 @@
 
     struct message_header {
       uint32_t tot_len;  // total length including payload
-      uint32_t msg_type; // MSG_SEND_REQ ..
-      uint32_t saddr;    // source address
-      uint32_t daddr;    // destination address
-      uint32_t id;       // message Id
+      uint32_t msg_type; // RECV_N_REQUEST, SEND_N_REQUEST
+      uint32_t fragments;  //fragments
+      uint32_t saddr; //source address
+      uint32_t daddr; //destination address
+      uint64_t sender_send_time;
+      uint64_t server_recv_time;
+      uint64_t server_send_time;
+      uint64_t recver_recv_time;
+    };
+
+    struct ack_header {
+      uint32_t tot_len;  // total length including payload
+      uint32_t msg_type; // RECV_N_REQUEST, SEND_N_REQUEST
+      uint32_t ws;  //window size
+      uint32_t saddr; //source address
+      uint32_t daddr; //destination address
+      uint64_t sender_send_time;
+      uint64_t server_recv_time;
+      uint64_t server_send_time;
+      uint64_t recver_recv_time;
     };
 
     struct message {
       struct message_header hdr;
       char payload[MSG_PAYLOAD_LEN];
     };
+
+    struct ack_message {
+      struct ack_header hdr;
+      char payload[MSG_PAYLOAD_LEN];
+    };
+
   #+end_src
-  =MSG_PAYLOAD_LEN= (固定長) がメッセージの長さを表している．メッセージの種類 (ACK であっても) によって変化しない．
+  =MSG_PAYLOAD_LEN= (固定長) がメッセージの長さを表している．メッセージの種類 (ACK であっても) によって変化しない．ただし，ACKとメッセージでヘッダーが異なる．
 
 ** メッセージタイプ
    現状，以下のように定義されている．
    #+begin_src c
-     #define MSG_SEND_REQ  1 // sender -> broker (+payload)
-     #define MSG_SEND_ACK  2 // broker -> sender
-     #define MSG_RECV_REQ  3 // receiver -> broker
-     #define MSG_RECV_ACK  4 // broker -> receiver (+payload)
-     #define MSG_FREE_REQ  5 // receiver -> broker
-     #define MSG_FREE_ACK  6 // broker -> receiver
-     #define MSG_PUSH_REQ  7 // broker -> receiver (+payload)
-     #define MSG_PUSH_ACK  8 // receiver -> broker
-     #define MSG_HELO_REQ  9 // receiver -> broker
-     #define MSG_HELO_ACK 10 // broker -> receiver
+    #define SEND_MSG 1      // sender -> server (+payload)
+    #define SEND_MSG_ACK 2  // sender -> server (+payload) then sender wait ack 
+    #define SEND_ACK 3      // server -> sender
+
+    #define RECV_N_REQ 3    // receiver -> server
+    #define RECV_MSG 4      // server -> receiver (+payload)
+    #define RECV_ACK 6      // receiver -> server
+
+    #define HELLO_REQ 7     // client -> server
+    #define HELLO_ACK 8     // server -> client
    #+end_src
 
 * 利用例
-  添付の Makefile にビルドと簡単なテスト方法を記述した．
-  gcc, perf コマンドが必要．
-
-  #+begin_src shell-script
-    make # コンパイル
-    make allow-perf # ユーザに perf の権限を与える
-    make test # sender/broker/receive の疎通テスト
-  #+end_src
+  test.sh を用いて実験を行うことができる．
+** 書式
+  : test.sh [COUNT] [DATA_SIZE] [WINDOW_SIZE] [FILE_NAME] [PORT_NUMBER]
+** 説明
+  *FILE_NAME* はlog ディレクトリ以下に保存されるログのファイル名の一部である．
+  作成されるログのファイル名は以下のようになる．
+  : [FILE_NAME][COUNT]_[DATA_SIZE]_[WINDOW_SIZE]_<YEAR><MONTH><DAY>_<TIME>.log
+  
