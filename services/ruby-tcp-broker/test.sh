@@ -1,4 +1,11 @@
 #!/bin/bash
+
+# $1 Count
+# $2 Data size
+# $3 Window size
+# $4 File name
+# $5 Port number
+
 if [ -x  $HOME/.rbenv/bin/rbenv ]; then
     # rbenv
     PATH=$HOME/.rbenv/bin:$PATH
@@ -31,7 +38,7 @@ echo end $4$1_$2_$3_$TIME.log $(date "+%M:%S")
 
 kill $SRVID
 
-ruby ~/mule/evaluation/cal.rb log/$4$1_$2_$3_$TIME.log $2
+ruby ../../evaluation/cal.rb log/$4$1_$2_$3_$TIME.log $2
 #ruby ~/mule/evaluation/file_cat.rb log/$4$1_$2_$3_$TIME.log log/$4$1_$2_$3_$TIME.lenlog
 
 echo $4$1_$2_$3_$TIME.log >> log/latest_file.log

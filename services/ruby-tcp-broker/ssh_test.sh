@@ -17,7 +17,7 @@ else
 fi
 
 echo delete latestlog
-~/mule/evaluation/clean_latestlog.sh ruby-tcp-broker 
+../../evaluation/clean_latestlog.sh ruby-tcp-broker
 
 echo rsync
 rsync --delete --archive ~/mule/services/ruby-tcp-broker/ nakagawa@hsc1.swlab.cs.okayama-u.ac.jp:mule/services/ruby-tcp-broker/
@@ -61,7 +61,7 @@ if [ $MIN -le 10000 ] && [ $MAX -ge 10000 ]; then
     fi
     if [ $MS -ge 4 ]; then
 	ssh nakagawa@hsc1.swlab.cs.okayama-u.ac.jp mule/services/ruby-tcp-broker/test.sh 100000 4 10000 ssh_tcp_win10000_ 10005
-    fi    
+    fi
 fi
 
 if [ $MIN -le 5000 ] && [ $MAX -ge 5000 ]; then

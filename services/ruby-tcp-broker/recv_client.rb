@@ -15,12 +15,12 @@ end
 
 def recv_msg(s, saddr, daddr)
   msg = Message.new
-  net_recv_msg(s, msg)
+  msg = net_recv_msg(s, msg)
   time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   msg_assign_time_stamp(msg, time, RECVER_RECV)
   $msg_ary[$data_num] = msg
   $data_num += 1
-  
+
   return msg.fragments
 end
 
@@ -31,7 +31,7 @@ def recv_n_msg(s, n, saddr, daddr)
 end
 
 def print_timestamp()
-  puts "num,send,svr_in,svr_out,recv" 
+  puts "num,send,svr_in,svr_out,recv"
   $data_num.times do |num|
     puts "#{$msg_ary[num].sender_send_time},#{$msg_ary[num].server_recv_time},#{$msg_ary[num].server_send_time},#{$msg_ary[num].recver_recv_time}"
   end
@@ -48,24 +48,24 @@ def recv_msgs(count, data_size, win_size, port_num)
   recv_count = 0
 
   net_hello_req(s, saddr, daddr)
-  
+
   while(recv_count + win_size) < count do
     send_ack(s, RECV_N_REQ, win_size, saddr, daddr)
     loop do
       fragments = recv_msg(s, saddr, daddr)
       if(fragments == 1)
-	recv_count += win_size
-	break
+        recv_count += win_size
+        break
       end
     end
   end
-  send_ack(s, RECV_N_REQ, count - recv_count, saddr, daddr)
   left_count = count - recv_count
-  left_count.times do 
-    p recv_msg(s, saddr, daddr)
+  send_ack(s, RECV_N_REQ, left_count, saddr, daddr)
+  left_count.times do
+    recv_msg(s, saddr, daddr)
   end
   send_ack(s, RECV_ACK, WS_1, saddr, daddr)
-  
+
   s.close
 end
 
@@ -77,7 +77,7 @@ def main
     STDERR.printf("%s argument error count\n", file)
     exit
   end
-  
+
   if ARGV.size > 1
     data_size = ARGV[1].to_i
   else
@@ -85,7 +85,7 @@ def main
     STDERR.printf("%s argument error datasize\n", file)
     exit
   end
-  
+
   if ARGV.size > 2
     win_size = ARGV[2].to_i
   else
@@ -101,7 +101,7 @@ def main
     STDERR.printf("%s argument error port_num\n", file)
     exit
   end
-  
+
   recv_msgs(count, data_size, win_size, port_num)
   print_timestamp()
 end
