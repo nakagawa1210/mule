@@ -33,7 +33,7 @@ end
 def print_timestamp()
   puts "num,send,svr_in,svr_out,recv"
   $data_num.times do |num|
-    puts "#{$msg_ary[num].sender_send_time},#{$msg_ary[num].server_recv_time},#{$msg_ary[num].server_send_time},#{$msg_ary[num].recver_recv_time}"
+    puts "#{num},#{$msg_ary[num].sender_send_time},#{$msg_ary[num].server_recv_time},#{$msg_ary[num].server_send_time},#{$msg_ary[num].recver_recv_time}"
   end
 end
 
