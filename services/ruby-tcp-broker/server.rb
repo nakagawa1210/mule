@@ -19,7 +19,7 @@ def store_msg(msg)
   $data_num += 1
 end
 
-def shift_msg(msg, fragments)
+def shift_msg(fragments)
   spin_count = 0
   while $recv_num >= $data_num do
     spin_count += 1
@@ -37,25 +37,21 @@ def shift_msg(msg, fragments)
   return msg
 end
 
-def treat_client(gs)
-  s = gs
-
+def treat_client(s)
   loop do
     msg = net_recv_msg(s, msg)
     break if msg == ERROR
     case msg.msg_type
     when SEND_MSG then
       store_msg(msg)
-      msg.fragments
       if msg.fragments == 1
-        ws = msg.fragments
-        net_send_ack(s, msg.payload, SEND_ACK, ws, msg.saddr, msg.daddr)
+        net_send_ack(s, msg.payload, SEND_ACK, msg.fragments, msg.saddr, msg.daddr)
       end
     when SEND_MSG_ACK then
     when RECV_N_REQ then
       ws = msg.fragments
       ws.downto(1) do |i|
-        smsg = shift_msg(msg, i)
+        smsg = shift_msg(i)
         net_send_msg(s, smsg)
       end
     when RECV_ACK then
