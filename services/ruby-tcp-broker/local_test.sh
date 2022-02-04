@@ -182,5 +182,9 @@ if [ $MIN -le 1  ] && [ $MAX -ge 1  ]; then
 fi
 
 if [ $MIN -le 0  ] && [ $MAX -ge 0  ]; then
-./test.sh 10 1 10 local_tcp_win100_ 10005
+    ./ws_test.sh 100000 1 1 1 local_tcp_win1-1_ 10005
+    ./ws_test.sh 100000 1 1 2 local_tcp_win1-2_ 10005
+    ./ws_test.sh 100000 1 1 3 local_tcp_win1-3_ 10005
+    ./ws_test.sh 100000 1 1 4 local_tcp_win1-4_ 10005
+    ./ws_test.sh 100000 1 1 5 local_tcp_win1-5_ 10005
 fi
