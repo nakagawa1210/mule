@@ -8,6 +8,9 @@ WS_1 = 1
 $msg_ary = Array.new(MAX_COUNT)
 $data_num = 0
 
+$time_count = 0
+$time_ary = Array.new(MAX_COUNT){Array.new(2, 0.0)}
+
 def send_ack(s, msg_type, ws, saddr, daddr)
   payload = "Hello"
   n = net_send_ack(s, payload, msg_type, ws, saddr, daddr)
@@ -15,25 +18,23 @@ end
 
 def recv_msg(s, saddr, daddr)
   msg = Message.new
+  $time_ary[$time_count][0] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   msg = net_recv_msg(s, msg)
   time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   msg_assign_time_stamp(msg, time, RECVER_RECV)
   $msg_ary[$data_num] = msg
   $data_num += 1
 
-  return msg.fragments
-end
+  $time_ary[$time_count][1] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  $time_count += 1
 
-def recv_n_msg(s, n, saddr, daddr)
-  n.times do
-    p recv_msg(s, saddr, daddr)
-  end
+  return msg.fragments
 end
 
 def print_timestamp()
   puts "num,send,svr_in,svr_out,recv"
   $data_num.times do |num|
-    puts "#{num},#{$msg_ary[num].sender_send_time},#{$msg_ary[num].server_recv_time},#{$msg_ary[num].server_send_time},#{$msg_ary[num].recver_recv_time}"
+    puts "#{num},#{$msg_ary[num].sender_send_time},#{$msg_ary[num].server_recv_time},#{$msg_ary[num].server_send_time},#{$msg_ary[num].recver_recv_time},#{$time_ary[num][0]},#{$time_ary[num][1]}"
   end
 end
 
@@ -51,7 +52,7 @@ def recv_msgs(count, data_size, win_size, port_num)
 
   while(recv_count + win_size) < count do
     send_ack(s, RECV_N_REQ, win_size, saddr, daddr)
-    loop do
+    while 1 do
       fragments = recv_msg(s, saddr, daddr)
       if(fragments == 1)
         recv_count += win_size

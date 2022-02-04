@@ -10,13 +10,17 @@ $recv_num = 0
 
 $msg_len = Array.new(MAX_COUNT)
 
-$time_count = 0
+$send_time_count = 0
+$recv_time_count = 0
+$time_ary = Array.new(MAX_COUNT + 1){Array.new(3, 0.0)}
 
 def store_msg(msg)
   time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   msg_assign_time_stamp(msg, time, SERVER_RECV)
   $msg_ary[$data_num] = msg
   $data_num += 1
+  $time_ary[$send_time_count][0] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  $send_time_count += 1
 end
 
 def shift_msg(fragments)
@@ -24,8 +28,10 @@ def shift_msg(fragments)
   while $recv_num >= $data_num do
     spin_count += 1
   end
+  $msg_len[$recv_num] = $recv_num - $data_num
 
-  $msg_len[$recv_num] = spin_count
+  $time_ary[$recv_time_count][2] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  $recv_time_count +=1
 
   msg = $msg_ary[$recv_num]
   $recv_num += 1
@@ -38,13 +44,15 @@ def shift_msg(fragments)
 end
 
 def treat_client(s)
-  loop do
+  while 1 do
     msg = net_recv_msg(s, msg)
     break if msg == ERROR
+    #puts msg.msg_type
     case msg.msg_type
     when SEND_MSG then
       store_msg(msg)
       if msg.fragments == 1
+        $time_ary[$send_time_count][1] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         net_send_ack(s, msg.payload, SEND_ACK, msg.fragments, msg.saddr, msg.daddr)
       end
     when SEND_MSG_ACK then
@@ -55,11 +63,9 @@ def treat_client(s)
         net_send_msg(s, smsg)
       end
     when RECV_ACK then
-      $recv_num.times do |num|
-        #puts "#{num},#{$msg_ary[num]}"
+      $send_time_count.times do |num|
+        puts "#{num},#{$time_ary[num][0]},#{$time_ary[num][1]},#{$time_ary[num][2]}"
       end
-      p $data_num
-      p $recv_num
     when HELLO_REQ then
       net_send_ack(s, msg.payload, HELLO_ACK, msg.fragments, msg.saddr, msg.daddr)
     else false

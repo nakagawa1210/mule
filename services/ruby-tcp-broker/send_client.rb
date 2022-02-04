@@ -2,16 +2,27 @@ require "../lib/message.rb"
 require "../lib/network.rb"
 require "socket"
 
+MAX_COUNT = 100001
 WS_1 = 1
 $time_count = 0
+$time_ary = Array.new(MAX_COUNT){Array.new(2, 0.0)}
+
+def print_timestamp()
+  $time_count.times do |num|
+    puts "#{num},#{$time_ary[num][0]},#{$time_ary[num][1]}"
+  end
+end
 
 def recv_msg(s)
   msg = Ack_Message.new
   net_recv_ack(s, msg, SEND_ACK)
+  $time_ary[$time_count-1][1] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   ws = msg.ws
 end
 
 def send_msg(s, fragments, saddr, daddr, payload)
+  $time_ary[$time_count][0] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  $time_count += 1
   msg = Message.new
   msg = msg_fill(msg, SEND_MSG, fragments, saddr, daddr, payload)
   time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -50,6 +61,8 @@ def send_msgs(host, count, data_size, win_size, port_num)
     send_msg(s, i, saddr, daddr, payload)
   end
   recv_msg(s)
+  $time_ary[$time_count][0] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  $time_count += 1
 #end_send_msgs
 
   s.close
@@ -94,6 +107,7 @@ def main()
   end
 
   send_msgs("localhost", count, data_size, win_size, port_num)
+  print_timestamp()
 end
 
 main
