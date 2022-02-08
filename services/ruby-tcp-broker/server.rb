@@ -23,6 +23,7 @@ def shift_msg(fragments)
   spin_count = 0
   while $recv_num >= $data_num do
     spin_count += 1
+    sleep 0.1
   end
 
   $msg_len[$recv_num] = spin_count
