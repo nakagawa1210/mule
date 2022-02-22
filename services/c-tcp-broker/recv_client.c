@@ -13,25 +13,13 @@
 
 #include "../lib/message.h"
 #include "../lib/network.h"
+#include "../lib/timer.h"
 
-#define rdtsc_64(lower, upper) asm __volatile ("rdtsc" : "=a"(lower), "=d" (upper));
-
-#define CLOCK_HZ 2600000000.0
-#define PORT_NO 9999
-#define MAX_BUF_SIZE 5000
 #define MAX_COUNT 100000
 #define WS_1 1
 
 struct message msg[MAX_COUNT];
 int data_num = 0;
-
-unsigned long int gettsc()
-{
-  unsigned int tsc_l, tsc_u; //uint32_t
-
-  rdtsc_64(tsc_l, tsc_u);
-  return (unsigned long int)tsc_u<<32 | tsc_l;
-}
 
 int send_ack(int fd,
 	     uint32_t msg_type,
@@ -42,7 +30,7 @@ int send_ack(int fd,
   char payload[MSG_PAYLOAD_LEN] = "Hello";
 
   int n = net_send_ack(fd, payload, msg_type, ws, saddr, daddr);
-  
+
   return n;
 }
 
@@ -51,13 +39,13 @@ int recv_msg(int fd,
 	     uint32_t daddr){
   struct message rmsg;
   uint64_t log_tsc;
-  
+
   net_recv_msg(fd, &rmsg);
-  log_tsc = gettsc();
+  log_tsc = getclock();
   msg_assign_time_stamp(&rmsg, log_tsc, RECVER_RECV);
   msg[data_num] = rmsg;
   data_num++;
-  
+
   return rmsg.hdr.fragments;
 }
 
@@ -73,7 +61,7 @@ int recv_n_msg (int fd,
 
 void recv_msgs(char *host, int count, int data_size, uint32_t win_size, int port_num){
   int fd = socket(AF_INET, SOCK_STREAM, 0);
- 
+
   if (fd < 0) {
     perror("socket");
     return;
@@ -92,7 +80,7 @@ void recv_msgs(char *host, int count, int data_size, uint32_t win_size, int port
   addr.sin_port = htons(port_num);
   memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
 
-  while (1) {     
+  while (1) {
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 	  sleep(1);
       continue;
@@ -107,13 +95,13 @@ void recv_msgs(char *host, int count, int data_size, uint32_t win_size, int port
   char payload[MSG_PAYLOAD_LEN] = "Hello";
   uint32_t saddr = 200;
   uint32_t daddr = 100;
- 
+
   struct ack_message ws_msg;
   struct ack_message ack_msg;
   int recv_count = 0;
-  
+
   net_hello_req(fd, saddr, daddr);
-  
+
   while(recv_count + win_size < count){
     send_ack(fd, RECV_N_REQ, win_size, saddr, daddr);
     while(1){
@@ -134,12 +122,12 @@ void recv_msgs(char *host, int count, int data_size, uint32_t win_size, int port
   printf("num,send,svr_in,svr_out,recv\n");
   for (int i = 0; i < data_num; i++) {
     printf("%d,%lf,%lf,%lf,%lf\n",i,
-	   (msg[i].hdr.sender_send_time) / CLOCK_HZ,
-	   (msg[i].hdr.server_recv_time) / CLOCK_HZ,
-	   (msg[i].hdr.server_send_time) / CLOCK_HZ,
-	   (msg[i].hdr.recver_recv_time) / CLOCK_HZ);
+	   (double)(msg[i].hdr.sender_send_time) / (1000 * 1000 * 1000),
+	   (double)(msg[i].hdr.server_recv_time) / (1000 * 1000 * 1000),
+	   (double)(msg[i].hdr.server_send_time) / (1000 * 1000 * 1000),
+	   (double)(msg[i].hdr.recver_recv_time) / (1000 * 1000 * 1000));
   }
-  
+
   return;
 }
 
@@ -157,7 +145,7 @@ int main(int argc, char *argv[])
     printf("%s argument error count\n", __FILE__);
     return 0;
   }
-  
+
   if(argc > 2){
     data_size = atoi(argv[2]);
   }else{
@@ -171,19 +159,19 @@ int main(int argc, char *argv[])
     printf("%s argument error winsize\n", __FILE__);
     return 0;
   }
-  
+
   if(argc > 4){
     port_num = atoi(argv[4]);
   }else{
     printf("%s argument error portnum\n", __FILE__);
     return 0;
   }
-  
+
   if (argc < 2){
     printf("augument\n");
     return 0;
   }
   recv_msgs("localhost", count, data_size, win_size, port_num);
-  
+
   return 0;
 }

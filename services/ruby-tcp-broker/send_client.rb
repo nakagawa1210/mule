@@ -1,5 +1,6 @@
 require "../lib/message.rb"
 require "../lib/network.rb"
+require "../lib/timer.rb"
 require "socket"
 
 WS_1 = 1
@@ -14,7 +15,7 @@ end
 def send_msg(s, fragments, saddr, daddr, payload)
   msg = Message.new
   msg = msg_fill(msg, SEND_MSG, fragments, saddr, daddr, payload)
-  time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  time = getclock()
   msg_assign_time_stamp(msg, time, SENDER_SEND)
   net_send_msg(s, msg)
 end

@@ -1,12 +1,11 @@
 require "socket"
 
 MSG_PAYLOAD_LEN = 1024
-MSG_HEADER_LEN = 4 + 4 + 4 + 4 + 4 + 8 + 8 + 8 + 8
+MSG_HEADER_LEN = 4 + 4 + 4 + 4 + 8 + 8 + 8 + 8
 MSG_TOTAL_LEN = MSG_PAYLOAD_LEN + MSG_HEADER_LEN
 
 
-Message = Struct.new(:tot_len,
-                     :msg_type,
+Message = Struct.new(:msg_type,
                      :fragments,
                      :saddr,
                      :daddr,
@@ -16,8 +15,7 @@ Message = Struct.new(:tot_len,
                      :recver_recv_time,
                      :payload)
 
-Ack_Message = Struct.new(:tot_len,
-                     :msg_type,
+Ack_Message = Struct.new(:msg_type,
                      :ws,
                      :saddr,
                      :daddr,
@@ -45,31 +43,29 @@ SERVER_SEND = 3
 RECVER_RECV = 4
 
 def msg_fill_hdr(msg, msg_type, fragments, saddr, daddr)
-  msg.tot_len = MSG_TOTAL_LEN
   msg.msg_type = msg_type
   msg.fragments = fragments
   msg.saddr = saddr
   msg.daddr = daddr
 
-  msg.sender_send_time ||= 0.0
-  msg.server_recv_time ||= 0.0
-  msg.server_send_time ||= 0.0
-  msg.recver_recv_time ||= 0.0
+  msg.sender_send_time ||= 0
+  msg.server_recv_time ||= 0
+  msg.server_send_time ||= 0
+  msg.recver_recv_time ||= 0
 
   return msg
 end
 
 def msg_fill_ack_hdr(msg, msg_type, ws, saddr, daddr)
-  msg.tot_len = MSG_TOTAL_LEN
   msg.msg_type = msg_type
   msg.ws = ws
   msg.saddr = saddr
   msg.daddr = daddr
 
-  msg.sender_send_time ||= 0.0
-  msg.server_recv_time ||= 0.0
-  msg.server_send_time ||= 0.0
-  msg.recver_recv_time ||= 0.0
+  msg.sender_send_time ||= 0
+  msg.server_recv_time ||= 0
+  msg.server_send_time ||= 0
+  msg.recver_recv_time ||= 0
 
   return msg
 end
@@ -103,8 +99,7 @@ def msg_assign_time_stamp(msg, time_stamp, where)
 end
 
 def msg_pack(msg)
-  data = [msg.tot_len,
-          msg.msg_type,
+  data = [msg.msg_type,
           msg.fragments,
           msg.saddr,
           msg.daddr,
@@ -112,12 +107,11 @@ def msg_pack(msg)
           msg.server_recv_time,
           msg.server_send_time,
           msg.recver_recv_time,
-          msg.payload].pack("I!5G4a1024")
+          msg.payload].pack("I!4Q4a1024")
 end
 
 def ack_pack(msg)
-  data = [msg.tot_len,
-          msg.msg_type,
+  data = [msg.msg_type,
           msg.ws,
           msg.saddr,
           msg.daddr,
@@ -125,11 +119,11 @@ def ack_pack(msg)
           msg.server_recv_time,
           msg.server_send_time,
           msg.recver_recv_time,
-          msg.payload].pack("I!5G4a1024")
+          msg.payload].pack("I!4Q4a1024")
 end
 
 def msg_unpack(data)
-  data_ary = data.unpack("I!5G4a1024")
+  data_ary = data.unpack("I!4Q4a1024")
   msg = Message.new(data_ary[0],
                     data_ary[1],
                     data_ary[2],
@@ -138,12 +132,11 @@ def msg_unpack(data)
                     data_ary[5],
                     data_ary[6],
                     data_ary[7],
-                    data_ary[8],
-                    data_ary[9])
+                    data_ary[8])
 end
 
 def ack_unpack(data)
-  data_ary = data.unpack("I!5G4a1024")
+  data_ary = data.unpack("I!4Q4a1024")
   msg = Ack_Message.new(data_ary[0],
                         data_ary[1],
                         data_ary[2],
@@ -152,6 +145,5 @@ def ack_unpack(data)
                         data_ary[5],
                         data_ary[6],
                         data_ary[7],
-                        data_ary[8],
-                        data_ary[9])
+                        data_ary[8])
 end

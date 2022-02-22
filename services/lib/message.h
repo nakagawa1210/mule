@@ -7,7 +7,6 @@
 #define MSG_TOTAL_LEN   (MSG_HEADER_LEN + MSG_PAYLOAD_LEN)
 
 struct message_header {
-  uint32_t tot_len;  // total length including payload
   uint32_t msg_type; // RECV_N_REQUEST, SEND_N_REQUEST
   uint32_t fragments;  //fragments
   uint32_t saddr; //source address
@@ -19,7 +18,6 @@ struct message_header {
 };
 
 struct ack_header {
-  uint32_t tot_len;  // total length including payload
   uint32_t msg_type; // RECV_N_REQUEST, SEND_N_REQUEST
   uint32_t ws;  //window size
   uint32_t saddr; //source address
@@ -42,7 +40,7 @@ struct ack_message {
 };
 
 #define SEND_MSG 1      // sender -> server (+payload)
-#define SEND_MSG_ACK 2  // sender -> server (+payload) then sender wait ack 
+#define SEND_MSG_ACK 2  // sender -> server (+payload) then sender wait ack
 #define SEND_ACK 3      // server -> sender
 
 #define RECV_N_REQ 3    // receiver -> server

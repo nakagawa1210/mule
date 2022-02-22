@@ -2,7 +2,6 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-#include <time.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -16,20 +15,11 @@
 
 #include "../lib/message.h"
 #include "../lib/network.h"
+#include "../lib/timer.h"
 
-#define rdtsc_64(lower, upper) asm __volatile ("rdtsc" : "=a"(lower), "=d" (upper));
 
-#define PORT_NO 9999
 #define MAX_COUNT 100000
-#define MEM_SIZE 5000
 #define WS_1 1
-
-unsigned long int gettsc(){
-  unsigned int tsc_l, tsc_u; //uint32_t
-
-  rdtsc_64(tsc_l, tsc_u);
-  return (unsigned long int)tsc_u<<32 | tsc_l;
-}
 
 int recv_msg(int fd){
   struct ack_message msg_ack;
@@ -38,7 +28,7 @@ int recv_msg(int fd){
 
   return msg_ack.hdr.ws;
 }
-  
+
 
 int send_msg (int fd,
 	      uint32_t n,
@@ -48,10 +38,10 @@ int send_msg (int fd,
   struct message smsg;
   uint64_t log_tsc;
   msg_fill(&smsg,SEND_MSG, n, saddr, daddr, payload,sizeof(payload));
-  log_tsc = gettsc();
+  log_tsc = getclock();
   msg_assign_time_stamp(&smsg, log_tsc, SENDER_SEND);
   net_send_msg(fd, &smsg);
-  
+
   return 0;
 }
 
@@ -76,7 +66,7 @@ void send_msgs (char *host, int count, int len, uint32_t win_size, int port_num)
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port_num);
   memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
-  
+
   while (1) {
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
       printf("sleep\n");
@@ -86,11 +76,11 @@ void send_msgs (char *host, int count, int len, uint32_t win_size, int port_num)
       break;
     }
   }
-  
+
   int on=1;
   int ret;
   ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
-  
+
   //int fd = net_connect(host, port_num);
 
   //start_send_messages
@@ -103,9 +93,9 @@ void send_msgs (char *host, int count, int len, uint32_t win_size, int port_num)
   int send_count = 0;
 
   net_hello_req(fd, saddr, daddr);
-  
+
   ws = WS_1;
-  
+
   while(send_count + ws < count){
     for (uint32_t i = ws; i > 0; i--) {
       send_msg(fd, i, saddr, daddr, payload);
@@ -119,9 +109,9 @@ void send_msgs (char *host, int count, int len, uint32_t win_size, int port_num)
     send_msg(fd, i, saddr, daddr, payload);
   }
   recv_msg(fd);
-  
+
   //end_sendmessages
-  
+
   if (close(fd) == -1) {
     printf("%d\n", errno);
   }
@@ -140,7 +130,7 @@ int main (int argc, char *argv[])
     printf("%s argument error count\n", __FILE__);
     return 0;
   }
-  
+
   if(argc > 2){
     data_size = atoi(argv[2]);
   }else{
@@ -154,7 +144,7 @@ int main (int argc, char *argv[])
     printf("%s argument error winsize\n", __FILE__);
     return 0;
   }
-  
+
   if(argc > 4){
     port_num = atoi(argv[4]);
     //strncpy(port_num, argv[4], sizeof(argv[4]));
@@ -163,7 +153,6 @@ int main (int argc, char *argv[])
     return 0;
   }
 
-  
   send_msgs("localhost", count, data_size, win_size, port_num);
   return 0;
 }

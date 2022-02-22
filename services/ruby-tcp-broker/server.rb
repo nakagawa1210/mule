@@ -1,5 +1,6 @@
 require "../lib/message.rb"
 require "../lib/network.rb"
+require "../lib/timer.rb"
 require "socket"
 MAX_COUNT = 100000
 ERROR = -1
@@ -13,7 +14,7 @@ $msg_len = Array.new(MAX_COUNT)
 $time_count = 0
 
 def store_msg(msg)
-  time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  time = getclock()
   msg_assign_time_stamp(msg, time, SERVER_RECV)
   $msg_ary[$data_num] = msg
   $data_num += 1
@@ -33,7 +34,7 @@ def shift_msg(fragments)
 
   msg.msg_type = RECV_MSG
   msg.fragments = fragments
-  time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  time = getclock()
   msg_assign_time_stamp(msg, time, SERVER_SEND)
   return msg
 end

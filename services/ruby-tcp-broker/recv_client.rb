@@ -1,5 +1,6 @@
 require "../lib/message.rb"
 require "../lib/network.rb"
+require "../lib/timer.rb"
 require 'socket'
 
 MAX_COUNT = 100000
@@ -16,7 +17,7 @@ end
 def recv_msg(s, saddr, daddr)
   msg = Message.new
   msg = net_recv_msg(s, msg)
-  time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  time = getclock()
   msg_assign_time_stamp(msg, time, RECVER_RECV)
   $msg_ary[$data_num] = msg
   $data_num += 1
@@ -33,7 +34,7 @@ end
 def print_timestamp()
   puts "num,send,svr_in,svr_out,recv"
   $data_num.times do |num|
-    puts "#{num},#{$msg_ary[num].sender_send_time},#{$msg_ary[num].server_recv_time},#{$msg_ary[num].server_send_time},#{$msg_ary[num].recver_recv_time}"
+    puts "#{num},#{$msg_ary[num].sender_send_time.to_f / (1000 * 1000 * 1000)},#{$msg_ary[num].server_recv_time.to_f / (1000 * 1000 * 1000)},#{$msg_ary[num].server_send_time.to_f / (1000 * 1000 * 1000)},#{$msg_ary[num].recver_recv_time.to_f / (1000 * 1000 * 1000)}"
   end
 end
 
