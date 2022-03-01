@@ -1,4 +1,4 @@
-#+TITLE: メッセージブローカの実験用スクリプトの引数と使用方法
+#+TITLE: メッセージブローカの性能測定用スクリプトの引数と使用方法
 #+AUTHOR: 中川 雄介
 #+EMAIL: nakagawa2020@s.okayama-u.ac.jp
 #+DATE: 2022-01-19
@@ -25,31 +25,52 @@
 # #+LaTeX: \thispagestyle{empty}
 
 * はじめに
-  中川が作成したメッセージブローカの実験用スクリプトの引数と使用方法について，以下に述べる．
+  メッセージブローカの性能測定用スクリプト(bulk_broker_benchmark.sh)の引数と使用方法について，以下に述べる．本スクリプトでは4種類のセンダ，4種類のレシーバおよび4種類のブローカの全12種類の実装に対して相互接続による性能測定を実施する．
+1) TCP/IP を用いたC言語によるセンダの実装
+2) TCP/IP を用いたC言語によるレシーバの実装
+3) TCP/IP を用いたC言語によるブローカの実装
+4) TCP/IP を用いたRuby によるセンダの実装
+5) TCP/IP を用いたRuby によるレシーバの実装
+6) TCP/IP を用いたRuby によるブローカの実装
+7) gRPC を用いたC言語によるセンダの実装
+8) gRPC を用いたC言語によるレシーバの実装
+9) gRPC を用いたC言語によるブローカの実装
+10) gRPC を用いたRuby によるセンダの実装
+11) gRPC を用いたRuby によるレシーバの実装
+12) gRPC を用いたRuby によるブローカの実装
 
 * 引数の詳細
   以下にスクリプトの引数の詳細について述べる．
 
-** test.sh
+** bulk_broker_benchmark.sh
 *** 書式
-    : test.sh [-c MSGS] [-p PORT_NUMBER] [-m COMMUNICATION_METHOD] [-sl SEND_LANGUAGE] [-sw SEND_WINDOWSIZE] [-rl RECV_LANGUAGE] [-rw RECV_WINDOWSIZE] [-bl BROKER_LANGUAGE]
+    : bbb.sh [-c MSGS] [-bp PORT_NUMBER] [-m COMMUNICATION_METHOD] [-sl SEND_LANGUAGE] [-sw SEND_WINDOWSIZE] [-rl RECV_LANGUAGE] [-rw RECV_WINDOWSIZE] [-bl BROKER_LANGUAGE]
 *** 説明
     センダ，レシーバおよび，メッセージブローカを各パラメータを指定して実行．
 *** オプション
     + =-c MSGS= :: 送信するメッセージの個数 (default: 100)
-    + =-p PORT_NUMBER= :: サーバとクライアントで使用するホスト名とポートの指定 (default: localhost:3000)
-    + =-m COMMUNICATION_METHOD= :: 通信方法の指定．TCP かgRPC を選択する．(default:TCP)
+    + =-bp PORT_NUMBER= :: 起動するブローカで使用するポートの指定 (default: 3000)
+    + =-m COMMUNICATION_METHOD= :: 通信方式の指定．TCP かgRPC を選択する．(default: TCP)
     + =-sl SEND_LANGUAGE= :: センダの実行言語の指定．C かRuby を選択する． (default: C)
     + =-sw SEND_WINDOWSIZE= :: センダのウィンドウサイズの指定 (default: 1)
     + =-rl RECV_LANGUAGE= :: レシーバの実行言語の指定． C かRuby を選択する．(default: C)
     + =-rw RECV_WINDOWSIZE= :: レシーバのウィンドウサイズの指定 (default: 1)
     + =-bl BROKER_LANGUAGE= :: メッセージブローカの実行言語の選択 (default: C)
 *** 使用例
-    1) localhost:8888 で通信方式にgRPC を用いてメッセージを 1000個送信．
-       : test.sh -c 1000 -p localhost:8888 -m gRPC
+    1) ポート8888 で通信方式にgRPC を用いてメッセージを 1000個送信．
+       : test.sh -c 1000 -bp 8888 -m gRPC
     2) センダの実行言語をRuby ，ウィンドウサイズ10で実行．
        : test.sh -sl Ruby -sw 10
-
+*** 実行結果の確認方法
+    本スクリプトを実行するとlog ディレクトリ以下にログファイルが作成される．作成されるログのファイル名は以下のようになる．
+    : [MSGS]_[COMMUNICATION_METHOD]_[LANGUAGE_WINDOWSIZE]_<YEAR><MONTH><DAY>_<TIME>.log
+    ログファイルのフォーマットは以下の通りである．
+    #+begin_src c
+     count,sender_send_time,server_recv_time,server_send_time,recver_recv_time,msgs,port_number,language_winsowsize,time
+     [COUNT],[sender_send_time],[server_recv_time],[server_send_time],[recver_recv_time],[MSGS],[PORT_NUMBER],[sw-sl-rw-rl-bl],<YEAR><MONTH><DAY>_<TIME>
+     [COUNT],[sender_send_time],[server_recv_time],[server_send_time],[recver_recv_time],[MSGS],[PORT_NUMBER],[sw-sl-rw-rl-bl],<YEAR><MONTH><DAY>_<TIME>
+      :
+    #+end_src c
 * メッセージ (パケット)
 ** フォーマット
   本実験システムでは，以下のような固定長のメッセージフォーマットを採用している．
