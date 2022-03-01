@@ -1,4 +1,4 @@
-#+TITLE: メッセージブローカの引数と使用方法
+#+TITLE: メッセージブローカの実験用スクリプトの引数と使用方法
 #+AUTHOR: 中川 雄介
 #+EMAIL: nakagawa2020@s.okayama-u.ac.jp
 #+DATE: 2022-01-19
