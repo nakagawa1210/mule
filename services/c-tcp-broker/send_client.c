@@ -69,7 +69,6 @@ void send_msgs (char *host, int count, int len, uint32_t win_size, int port_num)
 
   while (1) {
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-      printf("sleep\n");
       sleep(1);
       continue;
     } else {
