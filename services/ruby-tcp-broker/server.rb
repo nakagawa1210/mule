@@ -1,6 +1,6 @@
-require "../lib/message.rb"
-require "../lib/network.rb"
-require "../lib/timer.rb"
+require_relative "../lib/message.rb"
+require_relative "../lib/network.rb"
+require_relative "../lib/timer.rb"
 require "socket"
 MAX_COUNT = 100000
 ERROR = -1
@@ -60,8 +60,8 @@ def treat_client(s)
       $recv_num.times do |num|
         #puts "#{num},#{$msg_ary[num]}"
       end
-      p $data_num
-      p $recv_num
+      #p $data_num
+      #p $recv_num
     when HELLO_REQ then
       net_send_ack(s, msg.payload, HELLO_ACK, msg.fragments, msg.saddr, msg.daddr)
     else false

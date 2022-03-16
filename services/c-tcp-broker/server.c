@@ -139,10 +139,10 @@ void *loop(void *pArg)
     }
     break;
     case RECV_ACK:
-      for (int i = 0; i < recv_num; i++)
-      {
-        printf("%d,%d\n", i, msg_len[i]);
-      }
+      // for (int i = 0; i < recv_num; i++)
+      // {
+      //   printf("%d,%d\n", i, msg_len[i]);
+      // }
       break;
     case HELLO_REQ:
       net_send_ack(fd, &msg.payload, HELLO_ACK, msg.hdr.fragments, msg.hdr.saddr, msg.hdr.daddr);

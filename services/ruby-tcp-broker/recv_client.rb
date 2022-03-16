@@ -1,6 +1,6 @@
-require "../lib/message.rb"
-require "../lib/network.rb"
-require "../lib/timer.rb"
+require_relative "../lib/message.rb"
+require_relative "../lib/network.rb"
+require_relative "../lib/timer.rb"
 require 'socket'
 
 MAX_COUNT = 100000
