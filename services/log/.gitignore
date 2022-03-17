@@ -1,2 +1,5 @@
 *
 !.gitignore
+!/graph/
+/graph/*
+!/graph/.gitignore
