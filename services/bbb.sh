@@ -111,6 +111,7 @@ if [ $COMMUNICATION_METHOD = "TCP" ]; then
     else
         echo "Broker Language argument invalid value"
     fi
+    sleep 1
     if [ $RECV_LANGUAGE = "C" ]; then
         ./c-tcp-broker/recv_client $MSGS 1 $RECV_WINDOWSIZE $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
         RECVID=$!
@@ -120,6 +121,7 @@ if [ $COMMUNICATION_METHOD = "TCP" ]; then
     else
         echo "Receiver Language argument invalid value"
     fi
+    sleep 1
     if [ $SEND_LANGUAGE = "C" ]; then
         ./c-tcp-broker/send_client $MSGS 1 $SEND_WINDOWSIZE $PORT_NUMBER
     elif [ $SEND_LANGUAGE = "Ruby" ]; then
@@ -137,6 +139,7 @@ elif [ $COMMUNICATION_METHOD = "gRPC" ]; then
     else
         echo "Broker Language argument invalid value"
     fi
+    sleep 1
     if [ $RECV_LANGUAGE = "C" ]; then
         ./c-grpc-broker/recv_client $MSGS 1 $RECV_WINDOWSIZE $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
         RECVID=$!
@@ -146,6 +149,7 @@ elif [ $COMMUNICATION_METHOD = "gRPC" ]; then
     else
         echo "Receiver Language argument invalid value"
     fi
+    sleep1
     if [ $SEND_LANGUAGE = "C" ]; then
         ./c-grpc-broker/send_client $MSGS 1 $SEND_WINDOWSIZE $PORT_NUMBER
     elif [ $SEND_LANGUAGE = "Ruby" ]; then
