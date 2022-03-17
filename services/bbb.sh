@@ -116,7 +116,7 @@ if [ $COMMUNICATION_METHOD = "TCP" ]; then
         ./c-tcp-broker/recv_client $MSGS 1 $RECV_WINDOWSIZE $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
         RECVID=$!
     elif [ $RECV_LANGUAGE = "Ruby" ]; then
-        ruby ruby-tcp-broker/recv_client.rb > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
+        ruby ruby-tcp-broker/recv_client.rb $MSGS 1 $RECV_WINDOWSIZE $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
         RECVID=$!
     else
         echo "Receiver Language argument invalid value"
