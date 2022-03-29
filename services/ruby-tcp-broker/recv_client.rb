@@ -38,8 +38,8 @@ def print_timestamp()
   end
 end
 
-def recv_msgs(count, data_size, win_size, port_num)
-  s = TCPSocket.open("localhost", port_num)
+def recv_msgs(count, win_size, host_name, port_num)
+  s = TCPSocket.open(host_name, port_num)
   s.setsockopt(Socket::IPPROTO_TCP,Socket::TCP_NODELAY,true)
 
   payload = "Hello"
@@ -80,18 +80,18 @@ def main
   end
 
   if ARGV.size > 1
-    data_size = ARGV[1].to_i
+    win_size = ARGV[1].to_i
   else
     file = File.basename(__FILE__)
-    STDERR.printf("%s argument error datasize\n", file)
+    STDERR.printf("%s argument error window_size\n", file)
     exit
   end
 
   if ARGV.size > 2
-    win_size = ARGV[2].to_i
+    host_name = ARGV[2]
   else
     file = File.basename(__FILE__)
-    STDERR.printf("%s argument error window_size\n", file)
+    STDERR.printf("%s argument error host_name\n", file)
     exit
   end
 
@@ -103,7 +103,7 @@ def main
     exit
   end
 
-  recv_msgs(count, data_size, win_size, port_num)
+  recv_msgs(count, win_size, host_name, port_num)
   print_timestamp()
 end
 

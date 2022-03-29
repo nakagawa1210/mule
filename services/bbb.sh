@@ -1,5 +1,6 @@
 #! /bin/bash
 MSGS=100
+HOST_NAME=localhost
 PORT_NUMBER=3000
 COMMUNICATION_METHOD=TCP
 SEND_LANGUAGE=C
@@ -18,6 +19,7 @@ function check_arg {
 function dump_params {
     cat <<EOF 1>&2
 MSGS                    $MSGS
+HOST_NAME		$HOST_NAME
 PORT_NUMBER             $PORT_NUMBER
 COMMUNICATION_METHOD    $COMMUNICATION_METHOD
 SEND_LANGUAGE           $SEND_LANGUAGE
@@ -38,6 +40,7 @@ Usage:
 Options:
     -h                         print this
     -c MSGS                    number of msgs
+    -bh HOST_NAME	       host name of broker
     -bp PORT_NUMBER            port number used by broker
     -m COMMUNICATION_METHOD    communication method. TCP or gRPC
     -sl SEND_LANGUAGE          sender language C or Ruby
@@ -49,7 +52,7 @@ EOF
 }
 
 #参考サイト https://qiita.com/b4b4r07/items/dcd6be0bb9c9185475bb
-OPT=`getopt -o hc:m: -l bp:,sl:,sw:,rl:,rw:,bl: -a -- "$@"`
+OPT=`getopt -o hc:m: -l bh:,bp:,sl:,sw:,rl:,rw:,bl: -a -- "$@"`
 if [ $? != 0 ] ; then
     exit 1
 fi
@@ -67,25 +70,28 @@ do
         -m) COMMUNICATION_METHOD=$2
             shift 2
             ;;
-	    --bp) PORT_NUMBER=$2
+	--bh) HOST_NAME=$2
             shift 2
             ;;
-	    --sl) SEND_LANGUAGE=$2
+	--bp) PORT_NUMBER=$2
             shift 2
             ;;
-	    --sw) SEND_WINDOWSIZE=$2
+	--sl) SEND_LANGUAGE=$2
             shift 2
             ;;
-	    --rl) RECV_LANGUAGE=$2
+	--sw) SEND_WINDOWSIZE=$2
             shift 2
             ;;
-	    --rw) RECV_WINDOWSIZE=$2
+	--rl) RECV_LANGUAGE=$2
             shift 2
             ;;
-	    --bl) BROKER_LANGUAGE=$2
+	--rw) RECV_WINDOWSIZE=$2
             shift 2
             ;;
-	    --) shift
+	--bl) BROKER_LANGUAGE=$2
+            shift 2
+            ;;
+	--) shift
             break
             ;;
         *)  echo "Internal error!" 1>&2
@@ -102,58 +108,82 @@ TIME=$(date "+%Y%m%d_%H%M")
 echo start "$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log $(date "+%H:%M:%S")
 
 if [ $COMMUNICATION_METHOD = "TCP" ]; then
-    if [ $BROKER_LANGUAGE = "C" ]; then
-        ./c-tcp-broker/server $PORT_NUMBER &
-        SRVID=$!
-    elif [ $BROKER_LANGUAGE = "Ruby" ]; then
-        ruby ruby-tcp-broker/server.rb $PORT_NUMBER &
-        SRVID=$!
+    if [ $HOST_NAME != "localhost" ]; then
+	if [ $BROKER_LANGUAGE = "C" ]; then
+            ssh ./c-tcp-broker/server $PORT_NUMBER &
+            SRVID=$!
+	elif [ $BROKER_LANGUAGE = "Ruby" ]; then
+            ssh ruby ruby-tcp-broker/server.rb $PORT_NUMBER &
+            SRVID=$!
+	else
+            echo "Broker Language argument invalid value"
+	fi
     else
-        echo "Broker Language argument invalid value"
+	if [ $BROKER_LANGUAGE = "C" ]; then
+            ./c-tcp-broker/server $PORT_NUMBER &
+            SRVID=$!
+	elif [ $BROKER_LANGUAGE = "Ruby" ]; then
+            ruby ruby-tcp-broker/server.rb $PORT_NUMBER &
+            SRVID=$!
+	else
+            echo "Broker Language argument invalid value"
+	fi
     fi
     sleep 1
     if [ $RECV_LANGUAGE = "C" ]; then
-        ./c-tcp-broker/recv_client $MSGS 1 $RECV_WINDOWSIZE $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
+        ./c-tcp-broker/recv_client $MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
         RECVID=$!
     elif [ $RECV_LANGUAGE = "Ruby" ]; then
-        ruby ruby-tcp-broker/recv_client.rb $MSGS 1 $RECV_WINDOWSIZE $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
+        ruby ruby-tcp-broker/recv_client.rb $MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
         RECVID=$!
     else
         echo "Receiver Language argument invalid value"
     fi
     sleep 1
     if [ $SEND_LANGUAGE = "C" ]; then
-        ./c-tcp-broker/send_client $MSGS 1 $SEND_WINDOWSIZE $PORT_NUMBER
+        ./c-tcp-broker/send_client $MSGS $SEND_WINDOWSIZE $HOST_NAME $PORT_NUMBER
     elif [ $SEND_LANGUAGE = "Ruby" ]; then
-        ruby ruby-tcp-broker/send_client.rb $MSGS 1 $SEND_WINDOWSIZE $PORT_NUMBER
+        ruby ruby-tcp-broker/send_client.rb $MSGS $SEND_WINDOWSIZE $HOST_NAME $PORT_NUMBER
     else
         echo "Sender Language argument invalid value"
     fi
 elif [ $COMMUNICATION_METHOD = "gRPC" ]; then
-    if [ $BROKER_LANGUAGE = "C" ]; then
-        ./c-grpc-broker/server $PORT_NUMBER &
-        SRVID=$!
-    elif [ $BROKER_LANGUAGE = "Ruby" ]; then
-        ruby ruby-grpc-broker/server.rb $PORT_NUMBER &
-        SRVID=$!
+    if [ $HOST_NAME != "localhost" ]; then
+	if [ $BROKER_LANGUAGE = "C" ]; then
+            ssh ./c-grpc-broker/server $PORT_NUMBER &
+            SRVID=$!
+	elif [ $BROKER_LANGUAGE = "Ruby" ]; then
+            ssh ruby ruby-grpc-broker/server.rb $PORT_NUMBER &
+            SRVID=$!
+	else
+            echo "Broker Language argument invalid value"
+	fi
     else
-        echo "Broker Language argument invalid value"
+	if [ $BROKER_LANGUAGE = "C" ]; then
+            ./c-grpc-broker/server $PORT_NUMBER &
+            SRVID=$!
+	elif [ $BROKER_LANGUAGE = "Ruby" ]; then
+            ruby ruby-grpc-broker/server.rb $PORT_NUMBER &
+            SRVID=$!
+	else
+            echo "Broker Language argument invalid value"
+	fi
     fi
     sleep 1
     if [ $RECV_LANGUAGE = "C" ]; then
-        ./c-grpc-broker/recv_client $MSGS 1 $RECV_WINDOWSIZE $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
+        ./c-grpc-broker/recv_client $MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
         RECVID=$!
     elif [ $RECV_LANGUAGE = "Ruby" ]; then
-        ruby ruby-grpc-broker/recv_client.rb $MSGS 1 $RECV_WINDOWSIZE $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"-$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
+        ruby ruby-grpc-broker/recv_client.rb $MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"-$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log &
         RECVID=$!
     else
         echo "Receiver Language argument invalid value"
     fi
     sleep1
     if [ $SEND_LANGUAGE = "C" ]; then
-        ./c-grpc-broker/send_client $MSGS 1 $SEND_WINDOWSIZE $PORT_NUMBER
+        ./c-grpc-broker/send_client $MSGS $SEND_WINDOWSIZE $HOST_NAME $PORT_NUMBER
     elif [ $SEND_LANGUAGE = "Ruby" ]; then
-        ruby ruby-grpc-broker/send_client.rb $MSGS 1 $SEND_WINDOWSIZE $PORT_NUMBER
+        ruby ruby-grpc-broker/send_client.rb $MSGS $SEND_WINDOWSIZE $HOST_NAME $PORT_NUMBER
     else
         echo "Sender Language argument invalid value"
     fi
@@ -169,7 +199,12 @@ do
     sleep 1
 done
 
-kill $SRVID
+if [ $HOST_NAME != "localhost" ]; then
+    ssh nakagawa@hsc1.swlab.cs.okayama-u.ac.jp kill $SRVID
+else
+    kill $SRVID
+fi
+
 echo end "$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log $(date "+%H:%M:%S")
 
 echo "$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log >> log/latest_file.log

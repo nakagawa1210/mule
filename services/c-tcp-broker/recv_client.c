@@ -59,7 +59,7 @@ int recv_n_msg (int fd,
   return 0;
 }
 
-void recv_msgs(char *host, int count, int data_size, uint32_t win_size, int port_num){
+void recv_msgs(int count, uint32_t win_size, char *host, int port_num){
   int fd = socket(AF_INET, SOCK_STREAM, 0);
 
   if (fd < 0) {
@@ -135,8 +135,8 @@ int main(int argc, char *argv[])
 {
   setvbuf(stdout, (char *)NULL, _IONBF, 0);
   int count = 1;
-  int data_size = 1;
   uint32_t win_size = 1;
+  char host_name[80] = "localhost";
   int port_num = 8000;
 
   if(argc > 1){
@@ -147,23 +147,23 @@ int main(int argc, char *argv[])
   }
 
   if(argc > 2){
-    data_size = atoi(argv[2]);
+    win_size = atoi(argv[2]);
   }else{
-    printf("%s argument error datasize\n", __FILE__);
+    printf("%s argument error win_size\n", __FILE__);
     return 0;
   }
 
-  if(argc > 3){
-    win_size = atoi(argv[3]);
+  if(argc > 3 && sizeof(argv[3]) < 80){
+    strncpy(host_name, argv[3], sizeof(argv[3]));
   }else{
-    printf("%s argument error winsize\n", __FILE__);
+    printf("%s argument error host_name\n", __FILE__);
     return 0;
   }
 
   if(argc > 4){
     port_num = atoi(argv[4]);
   }else{
-    printf("%s argument error portnum\n", __FILE__);
+    printf("%s argument error port_num\n", __FILE__);
     return 0;
   }
 
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
     printf("augument\n");
     return 0;
   }
-  recv_msgs("localhost", count, data_size, win_size, port_num);
+  recv_msgs(count, win_size, host_name, port_num);
 
   return 0;
 }

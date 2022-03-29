@@ -155,9 +155,6 @@ void *loop(void *pArg)
 
 int main(int argc, char *argv[])
 {
-  int count = 1;
-  int data_size = 1;
-  int win_size = 1;
   int port_num = 8000;
 
   if (argc > 1)

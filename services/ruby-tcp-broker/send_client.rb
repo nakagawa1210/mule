@@ -20,8 +20,8 @@ def send_msg(s, fragments, saddr, daddr, payload)
   net_send_msg(s, msg)
 end
 
-def send_msgs(host, count, data_size, win_size, port_num)
-  s = TCPSocket.open(host, port_num)
+def send_msgs(count, win_size, host_name, port_num)
+  s = TCPSocket.open(host_name, port_num)
   s.setsockopt(Socket::IPPROTO_TCP,Socket::TCP_NODELAY,true)
 
   #start_send_messages
@@ -66,18 +66,18 @@ def main()
   end
 
   if ARGV.size > 1
-    data_size = ARGV[1].to_i
+    win_size = ARGV[1].to_i
   else
     file = File.basename(__FILE__)
-    STDERR.printf("%s argument error data_size\n", file)
+    STDERR.printf("%s argument error win_size\n", file)
     exit
   end
 
   if ARGV.size > 2
-    win_size = ARGV[2].to_i
+    host_name = ARGV[2]
   else
     file = File.basename(__FILE__)
-    STDERR.printf("%s argument error window_size\n", file)
+    STDERR.printf("%s argument error host_name\n", file)
     exit
   end
 
@@ -94,7 +94,7 @@ def main()
     exit
   end
 
-  send_msgs("localhost", count, data_size, win_size, port_num)
+  send_msgs(count, win_size, host_name, port_num)
 end
 
 main
