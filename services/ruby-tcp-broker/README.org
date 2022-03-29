@@ -25,31 +25,34 @@
 # #+LaTeX: \thispagestyle{empty}
 
 * はじめに
-  中川が作成したメッセージブローカの引数と使用方法について，以下に述べる．
+  作成したメッセージブローカの引数と使用方法について，以下に述べる．
 
 * 引数の詳細
   以下に各プログラムの引数の詳細について述べる．
 
 ** send_client
 *** 書式
-    : send_client [COUNT] [DATA_SIZE] [WINDOW_SIZE] [PORT_NUMBER]
+    : send_client [COUNT] [WINDOW_SIZE] [HOST_NAME] [PORT_NUMBER]
 *** 説明
-    *COUNT* でメッセージ送信回数を指定し，
-    *DATA_SIZE* で一つのメッセージで送るデータのサイズを指定する．
-    *WINDOW_SIZE* で指定された回数メッセージを受け取る毎に応答メッセージを送信する．
-    *PORT_NUMBER* で指定したポートで通信を行う．
+    *COUNT* でメッセージ送信回数を指定する．
+    *WINDOW_SIZE* で指定された回数メッセージを送信する毎に応答メッセージを受信する．
+    *HOST_NAME* で指定したホストと通信する．
+    *PORT_NUMBER* で指定したポートで通信する．
 *** 使用例
-    1) ポート10005，データサイズ１KB，WS100でメッセージを 1000個送信．
-       : send_client 1000 1 100 10005
+    1) localhost ポート10005，WS100でメッセージを 1000個送信．
+       : send_client 1000 100 localhost 10005
 
 ** recv_client
 *** 書式
-    : recv_client [COUNT] [DATA_SIZE] [WINDOW_SIZE] [PORT_NUMBER]
+    : recv_client [COUNT] [WINDOW_SIZE] [HOST_NAME] [PORT_NUMBER]
 *** 説明
-    メッセージを受信して記録．
+    *COUNT* でメッセージ受信回数を指定する．
+    *WINDOW_SIZE* で指定された回数メッセージを受信する毎に応答メッセージを送信する．
+    *HOST_NAME* で指定したホストと通信する．
+    *PORT_NUMBER* で指定したポートで通信する．
 *** 使用例
-    1) ポート10005，データサイズ１KB，WS100でメッセージを 1000個受信．
-       : recv_client 1000 1 100 10005
+    1) localhost ポート10005，WS100でメッセージを 1000個受信．
+       : recv_client 1000 100 localhost 10005
 
 ** server
 *** 書式
@@ -123,9 +126,9 @@
 * 利用例
   test.sh を用いて実験を行うことができる．
 ** 書式
-  : test.sh [COUNT] [DATA_SIZE] [WINDOW_SIZE] [FILE_NAME] [PORT_NUMBER]
+  : test.sh [COUNT] [WINDOW_SIZE] [HOST_NAME] [PORT_NUMBER] [FILE_NAME]
 ** 説明
   *FILE_NAME* はlog ディレクトリ以下に保存されるログのファイル名の一部である．
   作成されるログのファイル名は以下のようになる．
-  : [FILE_NAME][COUNT]_[DATA_SIZE]_[WINDOW_SIZE]_<YEAR><MONTH><DAY>_<TIME>.log
+  : [FILE_NAME][COUNT]_[WINDOW_SIZE]_<YEAR><MONTH><DAY>_<TIME>.log
   
