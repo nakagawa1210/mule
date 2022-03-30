@@ -12,6 +12,7 @@
 #include <netdb.h>
 #include <stdlib.h>
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
 
 #include "../lib/message.h"
 #include "../lib/network.h"
@@ -46,30 +47,53 @@ int send_msg (int fd,
 }
 
 void send_msgs (int count, uint32_t win_size, char *host, int port_num){
-
   int fd = socket(AF_INET, SOCK_STREAM, 0);
 
   if (fd < 0) {
     perror("socket\n");
     return;
   }
-
-  struct hostent *hp;
-  if ((hp = gethostbyname(host)) == NULL) {
-    fprintf(stderr, "gethost error %s\n", host);
-    close(fd);
+  struct addrinfo hints, *res;
+  struct in_addr in_addr;
+  int err;
+  struct sockaddr_in addr;
+  
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_family = AF_INET;
+  
+  if ((err = getaddrinfo(host, NULL, &hints, &res)) != 0) {
+    printf("error %d\n", err);
     return;
   }
+  in_addr.s_addr= ((struct sockaddr_in *)(res->ai_addr))->sin_addr.s_addr;
 
-  struct sockaddr_in addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port_num);
-  memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
+  memcpy(&addr.sin_addr, &in_addr, sizeof(in_addr));
+
+  //struct hostent *hp;
+  //if ((hp = gethostbyname(host)) == NULL) {
+  //  fprintf(stderr, "gethost error %s\n", host);
+  //  close(fd);
+  //  return;
+  //}
+  //
+  //struct sockaddr_in addr;
+  //memset(&addr, 0, sizeof(addr));
+  //addr.sin_family = AF_INET;
+  //addr.sin_port = htons(port_num);
+  //memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
+  //
+  //print_hostname(hp);
+  //print_ipaddr_v4(hp);
+  
 
   while (1) {
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
       sleep(1);
+      printf("connect\n");
       continue;
     } else {
       break;
@@ -137,8 +161,8 @@ int main (int argc, char *argv[])
     return 0;
   }
 
-  if(argc > 3 && sizeof(argv[3]) < 80){
-    strncpy(host_name, argv[3], sizeof(argv[3]));
+  if(argc > 3 && strlen(argv[3]) < 81){
+    strncpy(host_name, argv[3], strlen(argv[3])+1);
   }else{
     printf("%s argument error host_name\n", __FILE__);
     return 0;

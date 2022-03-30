@@ -110,11 +110,9 @@ echo start "$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV
 if [ $COMMUNICATION_METHOD = "TCP" ]; then
     if [ $HOST_NAME != "localhost" ]; then
 	if [ $BROKER_LANGUAGE = "C" ]; then
-            ssh ./c-tcp-broker/server $PORT_NUMBER &
-            SRVID=$!
+            ssh nakagawa@hsc1.swlab.cs.okayama-u.ac.jp mule/services/c-tcp-broker/server $PORT_NUMBER &
 	elif [ $BROKER_LANGUAGE = "Ruby" ]; then
-            ssh ruby ruby-tcp-broker/server.rb $PORT_NUMBER &
-            SRVID=$!
+            ssh nakagawa@hsc1.swlab.cs.okayama-u.ac.jp ruby mule/services/ruby-tcp-broker/server.rb $PORT_NUMBER &
 	else
             echo "Broker Language argument invalid value"
 	fi
@@ -150,11 +148,9 @@ if [ $COMMUNICATION_METHOD = "TCP" ]; then
 elif [ $COMMUNICATION_METHOD = "gRPC" ]; then
     if [ $HOST_NAME != "localhost" ]; then
 	if [ $BROKER_LANGUAGE = "C" ]; then
-            ssh ./c-grpc-broker/server $PORT_NUMBER &
-            SRVID=$!
+            ssh nakagawa@hsc1.swlab.cs.okayama-u.ac.jp mule/services/c-grpc-broker/server $PORT_NUMBER &
 	elif [ $BROKER_LANGUAGE = "Ruby" ]; then
-            ssh ruby ruby-grpc-broker/server.rb $PORT_NUMBER &
-            SRVID=$!
+            ssh nakagawa@hsc1.swlab.cs.okayama-u.ac.jp ruby mule/services/ruby-grpc-broker/server.rb $PORT_NUMBER &
 	else
             echo "Broker Language argument invalid value"
 	fi
@@ -200,7 +196,7 @@ do
 done
 
 if [ $HOST_NAME != "localhost" ]; then
-    ssh nakagawa@hsc1.swlab.cs.okayama-u.ac.jp kill $SRVID
+    ssh nakagawa@hsc1.swlab.cs.okayama-u.ac.jp killall server
 else
     kill $SRVID
 fi
