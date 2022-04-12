@@ -6,6 +6,7 @@ MAX_COUNT = 100000
 ERROR = -1
 
 $msg_ary = Array.new(MAX_COUNT)
+$msg_ary_mu = Mutex.new()
 $data_num = 0
 $recv_num = 0
 
@@ -16,7 +17,9 @@ $time_count = 0
 def store_msg(msg)
   time = getclock()
   msg_assign_time_stamp(msg, time, SERVER_RECV)
+  $msg_ary_mu.lock
   $msg_ary[$data_num] = msg
+  $msg_ary_mu.unlock
   $data_num += 1
 end
 
@@ -29,7 +32,10 @@ def shift_msg(fragments)
 
   $msg_len[$recv_num] = spin_count
 
+  $msg_ary_mu.lock
   msg = $msg_ary[$recv_num]
+  $msg_ary_mu.unlock
+
   $recv_num += 1
 
   msg.msg_type = RECV_MSG
@@ -60,8 +66,6 @@ def treat_client(s)
       $recv_num.times do |num|
         #puts "#{num},#{$msg_ary[num]}"
       end
-      #p $data_num
-      #p $recv_num
     when HELLO_REQ then
       net_send_ack(s, msg.payload, HELLO_ACK, msg.fragments, msg.saddr, msg.daddr)
     else false

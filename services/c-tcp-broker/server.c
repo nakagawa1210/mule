@@ -27,7 +27,7 @@ volatile int data_num = 0;
 volatile int recv_num = 0;
 
 int msg_len[MAX_COUNT] = {0};
-//pthread_mutex_t mutex;
+pthread_mutex_t mutex;
 
 static void die(const char *msg)
 {
@@ -76,7 +76,9 @@ int store_msg(struct message *msg)
   uint64_t log_tsc;
   log_tsc = getclock();
   msg_assign_time_stamp(msg, log_tsc, SERVER_RECV);
+  pthread_mutex_lock(&mutex);
   msg_ary[data_num] = *msg;
+  pthread_mutex_unlock(&mutex);
   data_num++;
 
   return 0;
@@ -92,7 +94,11 @@ int shift_msg(struct message *msg, uint32_t ws)
   }
   msg_len[recv_num] = data_num - recv_num;
 
+
+  pthread_mutex_lock(&mutex);
   *msg = msg_ary[recv_num];
+  pthread_mutex_unlock(&mutex);
+
   recv_num++;
   msg->hdr.msg_type = RECV_MSG;
   msg->hdr.fragments = ws;

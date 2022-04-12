@@ -187,10 +187,6 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  if (argc < 2){
-    printf("augument\n");
-    return 0;
-  }
   recv_msgs(count, win_size, host_name, port_num);
 
   return 0;
