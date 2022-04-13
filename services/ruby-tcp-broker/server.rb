@@ -6,9 +6,14 @@ MAX_COUNT = 100000
 ERROR = -1
 
 $msg_ary = Array.new(MAX_COUNT)
-$msg_ary_mu = Mutex.new()
 $data_num = 0
 $recv_num = 0
+
+$msg_ary_mu = Mutex.new()
+$recv_lock_cnt = 0
+$send_lock_cnt = 0
+$recv_lock_time = Array.new(MAX_COUNT)
+$send_lock_time = Array.new(MAX_COUNT)
 
 $msg_len = Array.new(MAX_COUNT)
 
@@ -17,9 +22,16 @@ $time_count = 0
 def store_msg(msg)
   time = getclock()
   msg_assign_time_stamp(msg, time, SERVER_RECV)
-  $msg_ary_mu.lock
+
+  if $msg_ary_mu.try_lock == false then
+    $send_lock_time[$send_lock_cnt] = [getclock(), 0]
+    $msg_ary_mu.lock
+    $send_lock_time[$send_lock_cnt][1] = getclock()
+    $send_lock_cnt += 1
+  end
   $msg_ary[$data_num] = msg
   $msg_ary_mu.unlock
+  
   $data_num += 1
 end
 
@@ -29,10 +41,14 @@ def shift_msg(fragments)
     spin_count += 1
     sleep 0.1
   end
-
   $msg_len[$recv_num] = spin_count
 
-  $msg_ary_mu.lock
+  if $msg_ary_mu.try_lock == false then
+    $recv_lock_time[$recv_lock_cnt] = [getclock(), 0]
+    $msg_ary_mu.lock
+    $recv_lock_time[$recv_lock_cnt][1] = getclock()
+    $recv_lock_cnt += 1
+  end
   msg = $msg_ary[$recv_num]
   $msg_ary_mu.unlock
 
@@ -63,9 +79,16 @@ def treat_client(s)
         net_send_msg(s, smsg)
       end
     when RECV_ACK then
-      $recv_num.times do |num|
-        #puts "#{num},#{$msg_ary[num]}"
+      send_lock_sum = 0
+      recv_lock_sum = 0
+      $send_lock_cnt.times do |i|
+        send_lock_sum += $send_lock_time[i][1] - $send_lock_time[i][0]
       end
+      $recv_lock_cnt.times do |i|
+        recv_lock_sum += $recv_lock_time[i][1] - $recv_lock_time[i][0]
+      end
+      puts "send_lock,#{$send_lock_cnt},recv_lock,#{$recv_lock_cnt}"
+      puts "send_lock_time,#{send_lock_sum},recv_lock_time,#{recv_lock_sum}"
     when HELLO_REQ then
       net_send_ack(s, msg.payload, HELLO_ACK, msg.fragments, msg.saddr, msg.daddr)
     else false

@@ -163,13 +163,13 @@ void *loop(void *pArg)
     case RECV_ACK:
       {
 	uint64_t send_lock_sum = 0, recv_lock_sum = 0;
-	printf("send_lock,%d,recv_lock,%d\n", send_lock_cnt, recv_lock_cnt);
-	for (int i = 0; i < recv_lock_cnt; i++){
-	  recv_lock_sum += recv_lock_time[i][1] - recv_lock_time[i][0];
-	}
 	for (int i = 0; i < send_lock_cnt; i++){
 	  send_lock_sum += send_lock_time[i][1] - send_lock_time[i][0];
 	}
+	for (int i = 0; i < recv_lock_cnt; i++){
+	  recv_lock_sum += recv_lock_time[i][1] - recv_lock_time[i][0];
+	}
+	printf("send_lock,%d,recv_lock,%d\n", send_lock_cnt, recv_lock_cnt);
 	printf("send_lock_time,%d,recv_lock_time,%d\n", send_lock_sum, recv_lock_sum);
       }
       break;
