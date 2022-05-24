@@ -1,15 +1,15 @@
 require "csv"
 
 def cal_diff(file)
-  @start = 0
-  @end = 0
+  @min = Float::INFINITY
+  @max = 0
   data_list = CSV.read(file)
-  data_list.shift
-  data_list.each.with_index(1) do |data, i|
-    if i == 1 then
-      @start = data[1].to_f
-    elsif i == data_list.length then
-      @end = data[4].to_f
+  data_list.each do |data|
+    if @min > data[1].to_f then
+      @min = data[1].to_f
+    end
+    if @max < data[4].to_f then
+      @max = data[4].to_f
     end
   end
 
@@ -17,13 +17,10 @@ def cal_diff(file)
   _partfile = winpartfile[2].partition("-")
   winsize = _partfile[0].to_i
 
-  return [winsize,1,@end - @start]
+  return [winsize,1,@max - @min]
 end
 
 def main
-  @start = 0
-  @end = 0
-
   time = ARGV[0].to_s
 
   log_list = CSV.read('log/latest_file.log')

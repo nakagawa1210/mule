@@ -150,13 +150,13 @@ if [ $COMMUNICATION_METHOD = "TCP" ]; then
     if [ $RECV_LANGUAGE = "C" ]; then
 	for i in $(seq 1 $RECV_NUMBER)
 	do
-	    ./c-tcp-broker/recv_client $RECV_MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME_"$i".log &
+	    ./c-tcp-broker/recv_client $RECV_MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_"$TIME"_$i.log &
             RECVID+=($!)
 	done
     elif [ $RECV_LANGUAGE = "Ruby" ]; then
 	for i in $(seq 1 $RECV_NUMBER)
 	do
-	    ruby ruby-tcp-broker/recv_client.rb $RECV_MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME_"$i".log &
+	    ruby ruby-tcp-broker/recv_client.rb $RECV_MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_"$TIME"_$i.log &
             RECVID+=($!)
 	done    
     else
@@ -205,13 +205,13 @@ elif [ $COMMUNICATION_METHOD = "gRPC" ]; then
     if [ $RECV_LANGUAGE = "C" ]; then
 	for i in $(seq 1 $RECV_NUMBER)
 	do
-            ./c-grpc-broker/recv_client $MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME_"$i".log &
+            ./c-grpc-broker/recv_client $MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_"$TIME"_$i.log &
             RECVID+=($!)
 	done
     elif [ $RECV_LANGUAGE = "Ruby" ]; then
 	for i in $(seq 1 $RECV_NUMBER)
 	do
-            ruby ruby-grpc-broker/recv_client.rb $MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"-$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME_"$i".log &
+            ruby ruby-grpc-broker/recv_client.rb $MSGS $RECV_WINDOWSIZE $HOST_NAME $PORT_NUMBER > log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_"$TIME"_$i.log &
             RECVID+=($!)
 	done
     else
@@ -239,13 +239,10 @@ fi
 
 wait ${RECVID[@]}
 
-#while(true)
-#do
-#    if [ $(ps -p $RECVID | wc -l) = "1" ]; then
-#    break
-#    fi
-#    sleep 1
-#done
+for i in $(seq 1 $RECV_NUMBER)
+do
+    cat log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_"$TIME"_$i.log  >> log/"$MSGS"_"$COMMUNICATION_METHOD"_$SEND_WINDOWSIZE-$SEND_LANGUAGE-$RECV_WINDOWSIZE-$RECV_LANGUAGE-"$BROKER_LANGUAGE"_$TIME.log
+done
 
 if [ $HOST_NAME != "localhost" ]; then
     ssh nakagawa@hsc1.swlab.cs.okayama-u.ac.jp killall server

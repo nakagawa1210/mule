@@ -5,7 +5,6 @@ def cal_diff(file)
   data_list = CSV.read(file)
   p filename = file + '.csv'
   CSV.open(filename,'w') do |diff_file|
-    diff_file << data_list.shift
     data_list.each.with_index(1) do |data,i|
       diff_file << [i,
                data[2].to_f - data[1].to_f,

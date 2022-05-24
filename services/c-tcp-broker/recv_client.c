@@ -139,7 +139,6 @@ void recv_msgs(int count, uint32_t win_size, char *host, int port_num){
     printf("%d\n", errno);
   }
 
-  printf("num,send,svr_in,svr_out,recv\n");
   for (int i = 0; i < data_num; i++) {
     printf("%d,%lf,%lf,%lf,%lf\n",i,
 	   (double)(msg[i].hdr.sender_send_time) / (1000 * 1000 * 1000),

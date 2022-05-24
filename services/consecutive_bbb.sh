@@ -20,19 +20,25 @@ echo delete latestlog
 # ./bbb.sh -c 100000 -sl C -rl C -m TCP -bl C -sw 2 -rw 2
 # ./bbb.sh -c 100000 -sl C -rl C -m TCP -bl C -sw 1 -rw 1
 
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 100000 -rw 100000
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 50000 -rw 50000
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 20000 -rw 20000
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 10000 -rw 10000
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 5000 -rw 5000
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 2000 -rw 2000
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 1000 -rw 1000
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 500 -rw 500
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 200 -rw 200
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 100 -rw 100
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 50 -rw 50
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 20 -rw 20
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 10 -rw 10
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 5 -rw 5
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 2 -rw 2
-./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 1 -rw 1
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 100000 -rw 100000 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 50000 -rw 50000 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 20000 -rw 20000 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 10000 -rw 10000 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 5000 -rw 5000 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 2000 -rw 2000 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 1000 -rw 1000 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 500 -rw 500 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 200 -rw 200 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 100 -rw 100 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 50 -rw 50 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 20 -rw 20 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 10 -rw 10 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 5 -rw 5 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 2 -rw 2 -sn 1 -rn 2
+./bbb.sh -c 100000 -sl C -rl C -m TCP -bl Ruby -sw 1 -rw 1 -sn 1 -rn 2
+
+#./bbb.sh -c 10 -sl C -rl C -m TCP -bl Ruby -sw 10 -rw 10 -rn 2
+#./bbb.sh -c 10 -sl C -rl C -m TCP -bl Ruby -sw 5 -rw 5 -rn 2
+#./bbb.sh -c 10 -sl C -rl C -m TCP -bl Ruby -sw 2 -rw 2 -rn 2
+#./bbb.sh -c 10 -sl C -rl C -m TCP -bl Ruby -sw 1 -rw 1 -rn 2
+
