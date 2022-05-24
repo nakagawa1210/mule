@@ -44,9 +44,9 @@ def shift_msg(fragments)
   $msg_len[$recv_num] = spin_count
 
   if $msg_ary_mu.try_lock == false then
-    $recv_lock_time[$recv_lock_cnt] = [getclock(), 0]
+#    $recv_lock_time[$recv_lock_cnt] = [getclock(), 0]
     $msg_ary_mu.lock
-    $recv_lock_time[$recv_lock_cnt][1] = getclock()
+#    $recv_lock_time[$recv_lock_cnt][1] = getclock()
     $recv_lock_cnt += 1
   end
   msg = $msg_ary[$recv_num]
@@ -79,16 +79,16 @@ def treat_client(s)
         net_send_msg(s, smsg)
       end
     when RECV_ACK then
-      send_lock_sum = 0
-      recv_lock_sum = 0
-      $send_lock_cnt.times do |i|
-        send_lock_sum += $send_lock_time[i][1] - $send_lock_time[i][0]
-      end
-      $recv_lock_cnt.times do |i|
-        recv_lock_sum += $recv_lock_time[i][1] - $recv_lock_time[i][0]
-      end
-      puts "send_lock,#{$send_lock_cnt},recv_lock,#{$recv_lock_cnt}"
-      puts "send_lock_time,#{send_lock_sum},recv_lock_time,#{recv_lock_sum}"
+      #send_lock_sum = 0
+      #recv_lock_sum = 0
+      #$send_lock_cnt.times do |i|
+      #  send_lock_sum += $send_lock_time[i][1] - $send_lock_time[i][0]
+      #end
+      #$recv_lock_cnt.times do |i|
+      #  recv_lock_sum += $recv_lock_time[i][1] - $recv_lock_time[i][0]
+      #end
+      #puts "send_lock,#{$send_lock_cnt},recv_lock,#{$recv_lock_cnt}"
+      #puts "send_lock_time,#{send_lock_sum},recv_lock_time,#{recv_lock_sum}"
     when HELLO_REQ then
       net_send_ack(s, msg.payload, HELLO_ACK, msg.fragments, msg.saddr, msg.daddr)
     else false
