@@ -98,9 +98,8 @@ int store_msg(struct message *msg)
     send_lock_cnt += 1;
   }
   msg_ary[data_num] = *msg;
-  pthread_mutex_unlock(&mutex);
-
   data_num++;
+  pthread_mutex_unlock(&mutex);
 
   return 0;
 }
@@ -122,9 +121,9 @@ int shift_msg(struct message *msg, uint32_t ws)
     recv_lock_cnt += 1;
   }
   *msg = msg_ary[recv_num];
+  recv_num++;
   pthread_mutex_unlock(&mutex);
 
-  recv_num++;
   msg->hdr.msg_type = RECV_MSG;
   msg->hdr.fragments = ws;
   log_tsc = getclock();

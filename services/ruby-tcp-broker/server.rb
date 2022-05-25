@@ -30,9 +30,8 @@ def store_msg(msg)
     $send_lock_cnt += 1
   end
   $msg_ary[$data_num] = msg
-  $msg_ary_mu.unlock
-  
   $data_num += 1
+  $msg_ary_mu.unlock
 end
 
 def shift_msg(fragments)
@@ -50,9 +49,8 @@ def shift_msg(fragments)
     $recv_lock_cnt += 1
   end
   msg = $msg_ary[$recv_num]
-  $msg_ary_mu.unlock
-
   $recv_num += 1
+  $msg_ary_mu.unlock
 
   msg.msg_type = RECV_MSG
   msg.fragments = fragments
