@@ -34,6 +34,15 @@ int send_lock_cnt = 0;
 uint64_t recv_lock_time[MAX_COUNT][2] = {0};
 uint64_t send_lock_time[MAX_COUNT][2] = {0};
 
+void sig_handler(int signo)
+{
+  if (signo == SIGINT){
+    printf("data_num:%d\n", data_num);
+    printf("recv_num:%d\n", recv_num);
+    exit(0);
+  }
+}
+
 static void die(const char *msg)
 {
   perror(msg);
@@ -194,6 +203,12 @@ int main(int argc, char *argv[])
   {
     printf("%s argument error portnum\n", __FILE__);
     return 0;
+  }
+  
+  if (signal(SIGINT, sig_handler) == SIG_ERR)
+  {
+    printf("SIG_ERR\n");
+    exit(1);
   }
 
   pthread_t handle;
