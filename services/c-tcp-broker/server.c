@@ -108,23 +108,43 @@ int shift_msg(struct message *msg, uint32_t ws)
 {
   uint64_t log_tsc;
   int spin_count = 0;
-
-  if(pthread_mutex_trylock(&mutex) != 0){
-    //recv_lock_time[recv_lock_cnt][0] = getclock();
+  
+//  while (1)
+//  {
+//    if(recv_num < data_num){
+//      if(pthread_mutex_trylock(&mutex) != 0){
+//	pthread_mutex_lock(&mutex);
+//	recv_lock_cnt += 1;
+//      }
+//      if(recv_num < data_num){
+//	break;
+//      }else{
+//	pthread_mutex_unlock(&mutex);
+//      }
+//    }
+//    sleep(0.1);
+//  }
+  while(1){
+    if(recv_num >= data_num){
+      continue;
+    }
+    //if(pthread_mutex_trylock(&mutex) != 0){
+      //recv_lock_time[recv_lock_cnt][0] = getclock();
     pthread_mutex_lock(&mutex);
-    //recv_lock_time[recv_lock_cnt][1] = getclock();
-    recv_lock_cnt += 1;
+      //recv_lock_time[recv_lock_cnt][1] = getclock();
+      //recv_lock_cnt += 1;
+      //}
+
+    if(recv_num < data_num){
+      //msg_len[recv_num] = data_num - recv_num;
+      *msg = msg_ary[recv_num];
+      recv_num++;
+      pthread_mutex_unlock(&mutex);
+      break;
+    }else{
+      pthread_mutex_unlock(&mutex);
+    }
   }
-  
-  while (recv_num >= data_num)
-  {
-    spin_count++;
-  }
-  msg_len[recv_num] = data_num - recv_num;
-  
-  *msg = msg_ary[recv_num];
-  recv_num++;
-  pthread_mutex_unlock(&mutex);
 
   msg->hdr.msg_type = RECV_MSG;
   msg->hdr.fragments = ws;
