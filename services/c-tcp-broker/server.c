@@ -92,9 +92,9 @@ int store_msg(struct message *msg)
   msg_assign_time_stamp(msg, log_tsc, SERVER_RECV);
 
   if(pthread_mutex_trylock(&mutex) != 0){
-    send_lock_time[send_lock_cnt][0] = getclock();
+    //send_lock_time[send_lock_cnt][0] = getclock();
     pthread_mutex_lock(&mutex);
-    send_lock_time[send_lock_cnt][1] = getclock();
+    //send_lock_time[send_lock_cnt][1] = getclock();
     send_lock_cnt += 1;
   }
   msg_ary[data_num] = *msg;
@@ -108,18 +108,20 @@ int shift_msg(struct message *msg, uint32_t ws)
 {
   uint64_t log_tsc;
   int spin_count = 0;
+
+  if(pthread_mutex_trylock(&mutex) != 0){
+    //recv_lock_time[recv_lock_cnt][0] = getclock();
+    pthread_mutex_lock(&mutex);
+    //recv_lock_time[recv_lock_cnt][1] = getclock();
+    recv_lock_cnt += 1;
+  }
+  
   while (recv_num >= data_num)
   {
     spin_count++;
   }
   msg_len[recv_num] = data_num - recv_num;
-
-  if(pthread_mutex_trylock(&mutex) != 0){
-    recv_lock_time[recv_lock_cnt][0] = getclock();
-    pthread_mutex_lock(&mutex);
-    recv_lock_time[recv_lock_cnt][1] = getclock();
-    recv_lock_cnt += 1;
-  }
+  
   *msg = msg_ary[recv_num];
   recv_num++;
   pthread_mutex_unlock(&mutex);
