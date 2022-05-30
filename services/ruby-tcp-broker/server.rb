@@ -44,16 +44,22 @@ def shift_msg(fragments)
     $recv_lock_cnt += 1
   end
   
-  while $recv_num >= $data_num do
-    spin_count += 1
-    sleep 0.1
+  while 1 do
+    if recv_num >= data_num then
+      next
+    end
+    $msg_ary_mu.lock
+
+    if recv_num < data_num then
+      #$msg_len[$recv_num] = spin_count
+      msg = $msg_ary[$recv_num]
+      $recv_num += 1
+      $msg_ary_mu.unlock
+      break
+    else
+      $msg_ary_mu.unlock
+    end
   end
-
-  $msg_len[$recv_num] = spin_count
-
-  msg = $msg_ary[$recv_num]
-  $recv_num += 1
-  $msg_ary_mu.unlock
 
   msg.msg_type = RECV_MSG
   msg.fragments = fragments
