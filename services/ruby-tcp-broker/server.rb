@@ -37,20 +37,15 @@ end
 def shift_msg(fragments)
   spin_count = 0
 
-  if $msg_ary_mu.try_lock == false then
-    #$recv_lock_time[$recv_lock_cnt][0] = getclock()
-    $msg_ary_mu.lock
-    #$recv_lock_time[$recv_lock_cnt][1] = getclock()
-    $recv_lock_cnt += 1
-  end
-  
   while 1 do
-    if recv_num >= data_num then
+    if $recv_num >= $data_num then
       next
     end
-    $msg_ary_mu.lock
+    if $msg_ary_mu.try_lock == false then
+      next
+    end
 
-    if recv_num < data_num then
+    if $recv_num < $data_num then
       #$msg_len[$recv_num] = spin_count
       msg = $msg_ary[$recv_num]
       $recv_num += 1
