@@ -39,9 +39,11 @@ def shift_msg(fragments)
 
   while 1 do
     if $recv_num >= $data_num then
+      sleep 0.01
       next
     end
     if $msg_ary_mu.try_lock == false then
+      sleep 0.01
       next
     end
 
